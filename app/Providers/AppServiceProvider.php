@@ -15,15 +15,14 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot()
     {
-        
+        if ($this->app->runningInConsole()) {
+            return; // ✅ PENTING: cegah DB query saat config:cache
+        }
+
         if (config('app.env') === 'production') {
             URL::forceScheme('https');
         }
-        /*
-        |--------------------------------------------------------------------------
-        | Pending Payments (Belum Dibayar)
-        |--------------------------------------------------------------------------
-        */
+        
 
         Inertia::share('unpaidCount', function () {
             if (!auth()->check()) return 0;
@@ -56,11 +55,6 @@ class AppServiceProvider extends ServiceProvider
                 ->values();
         });
 
-        /*
-        |--------------------------------------------------------------------------
-        | Rejected Payments (Pembayaran Ditolak)
-        |--------------------------------------------------------------------------
-        */
         Inertia::share('rejectedPayments', function () {
             if (!auth()->check()) return [];
 
@@ -82,4 +76,5 @@ class AppServiceProvider extends ServiceProvider
                 });
         });
     }
+
 }
