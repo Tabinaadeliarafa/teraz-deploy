@@ -233,14 +233,14 @@ const PembayaranPage: React.FC<PembayaranPageProps> = ({ user, payments, stats }
     }
 
     const formData = new FormData();
-    formData.append('payment_id', selectedPayment.id.toString());
-    formData.append('payment_method', paymentMethod);
-    if (notes) formData.append('notes', notes);
-    if (referenceFile) formData.append('reference', referenceFile);
+    formData.append('room_id', String(selectedPayment.id)); // sesuaikan jika kamu punya room_id langsung
+    formData.append('amount', String(selectedPayment.amount));
+    formData.append('method', paymentMethod);
 
-    router.post('/pembayaran/confirm', formData, {
-      preserveState: true,
-      preserveScroll: true,
+    if (notes) formData.append('note', notes);
+    if (referenceFile) formData.append('proof', referenceFile); // ✅ NAMA HARUS "proof"
+
+    router.post('/api/payments', formData, {
       forceFormData: true,
       onSuccess: () => {
         setShowPaymentModal(false);
@@ -250,15 +250,14 @@ const PembayaranPage: React.FC<PembayaranPageProps> = ({ user, payments, stats }
         setPreviewUrl('');
         setNotes('');
 
-        setAlertMessage('Pembayaran berhasil dikonfirmasi! Kami akan memverifikasi dalam waktu singkat.');
+        setAlertMessage('Bukti pembayaran berhasil dikirim!');
         setShowSuccessAlert(true);
 
-        setCurrentPage(0);
         router.reload({ only: ['payments', 'stats'] });
       },
       onError: (errors) => {
-        console.error('Payment confirmation failed:', errors);
-        setAlertMessage('Gagal mengonfirmasi pembayaran. Silakan coba lagi.');
+        console.error('Upload gagal:', errors);
+        setAlertMessage('Gagal mengirim bukti pembayaran.');
         setShowErrorAlert(true);
       },
     });
