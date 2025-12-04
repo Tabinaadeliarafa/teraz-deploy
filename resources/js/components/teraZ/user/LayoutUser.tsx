@@ -73,7 +73,14 @@ const LayoutUser: React.FC<LayoutUserProps> = ({
   const notifRef = useRef<HTMLButtonElement | null>(null);
 
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
-  const handleLogout = () => router.post("/logout");
+
+  const handleLogout = () => {
+    router.post('/logout', {}, {
+        onSuccess: () => {
+            router.visit('/'); // ✅ langsung ke LandingPage TANPA reload
+        },
+    });
+};
 
   const menuItems = [
     { name: "Profil", path: "/profile" },

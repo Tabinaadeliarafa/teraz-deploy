@@ -20,8 +20,12 @@ const LayoutAdmin: React.FC<LayoutAdminProps> = ({
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const handleLogout = () => {
-        router.post('/logout');
-    };
+    router.post('/logout', {}, {
+        onSuccess: () => {
+            router.visit('/'); // ✅ langsung ke LandingPage TANPA reload
+        },
+    });
+};
 
     const toggleSidebar = () => {
         setIsSidebarOpen(!isSidebarOpen);
