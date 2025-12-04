@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Payment;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 class PaymentController extends Controller
 {
@@ -32,30 +33,41 @@ class PaymentController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'room_id'     => 'required|integer|exists:rooms,id',
-            'amount'      => 'required|numeric|min:0',
-            'method'      => 'required|string',
-            'proof_path'  => 'nullable|string', // bisa diubah ke file upload
-            'note'        => 'nullable|string',
+            'room_id' => 'required|integer|exists:rooms,id',
+            'amount'  => 'required|numeric|min:0',
+            'method'  => 'required|string',
+            'proof'   => 'nullable|image|mimes:jpeg,png,jpg|max:4096',
+            'note'    => 'nullable|string',
         ]);
 
         $tenantId = Auth::user()->id;
 
+        $proofUrl = null;
+
+        // ✅ UPLOAD KE CLOUDINARY
+        if ($request->hasFile('proof')) {
+            $uploaded = Cloudinary::upload(
+                $request->file('proof')->getRealPath(),
+                ['folder' => 'payment_proofs']
+            );
+            $proofUrl = $uploaded->getSecurePath();
+        }
+
         $payment = Payment::create([
-            'tenant_id'   => $tenantId,
-            'room_id'     => $validated['room_id'],
-            'period_year' => date('Y'),
-            'period_month'=> date('m'),
-            'due_date'    => now()->endOfMonth(),
-            'amount'      => $validated['amount'],
-            'method'      => $validated['method'],
-            'proof_path'  => $validated['proof_path'] ?? null,
-            'note'        => $validated['note'] ?? null,
-            'status'      => 'pending',
+            'tenant_id'    => $tenantId,
+            'room_id'      => $validated['room_id'],
+            'period_year'  => date('Y'),
+            'period_month' => date('m'),
+            'due_date'     => now()->endOfMonth(),
+            'amount'       => $validated['amount'],
+            'method'       => $validated['method'],
+            'proof_path'   => $proofUrl, // ✅ URL Cloudinary
+            'note'         => $validated['note'] ?? null,
+            'status'       => 'pending',
         ]);
 
         return response()->json([
-            'message' => 'Pembayaran berhasil dibuat, menunggu konfirmasi admin',
+            'message' => 'Pembayaran berhasil dibuat',
             'payment' => $payment
         ], 201);
     }

@@ -10,6 +10,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Controllers\RoomController;
 use Illuminate\Support\Facades\Storage;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 class TenantController extends Controller
 {
@@ -25,7 +26,7 @@ class TenantController extends Controller
                 'roomNumber' => $tenant->room ? $tenant->room->nomor_kamar : '-',
                 'status' => $this->mapPaymentStatus($tenant),
                 'photo' => $tenant->profile_photo 
-                    ? asset('storage/' . $tenant->profile_photo) . '?v=' . strtotime($tenant->updated_at) 
+                    ? $tenant->profile_photo   
                     : asset('teraZ/testi1.png'),
                 'start_date' => $tenant->tanggal_mulai?->format('Y-m-d'),
                 'end_date' => $tenant->tanggal_selesai?->format('Y-m-d'),
@@ -171,31 +172,30 @@ class TenantController extends Controller
      */
     public function updateProfilePhoto(Request $request)
     {
-        // Validasi file
+
         $request->validate([
-            'profile_photo' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+            'profile_photo' => 'required|image|mimes:jpeg,png,jpg|max:4096',
         ]);
 
-        // Dapatkan user yang sedang login
-        $user = Auth::user();
         
-        // Dapatkan tenant berdasarkan user_id
+        $user = Auth::user();
         $tenant = Tenant::where('user_id', $user->id)->firstOrFail();
 
-        // Hapus foto lama jika ada
-        if ($tenant->profile_photo && Storage::disk('public')->exists($tenant->profile_photo)) {
-            Storage::disk('public')->delete($tenant->profile_photo);
+        // ✅ HAPUS FOTO LAMA DI CLOUDINARY (kalau ada)
+        if ($tenant->profile_photo) {
+            $publicId = pathinfo(parse_url($tenant->profile_photo, PHP_URL_PATH), PATHINFO_FILENAME);
+            Cloudinary::destroy("profile_photos/" . $publicId);
         }
 
-        // Simpan foto baru dengan nama unik
-        $file = $request->file('profile_photo');
-        $filename = 'tenant_' . $tenant->id . '_' . time() . '.' . $file->extension();
-        $path = $file->storeAs('profile_photos', $filename, 'public');
+        // ✅ UPLOAD BARU KE CLOUDINARY
+        $uploaded = Cloudinary::upload(
+            $request->file('profile_photo')->getRealPath(),
+            ['folder' => 'profile_photos']
+        );
 
-        // Update path foto di database dan timestamp updated_at
         $tenant->update([
-            'profile_photo' => $path,
-            'updated_at' => now(), // Force update timestamp
+            'profile_photo' => $uploaded->getSecurePath(), // ✅ URL cloudinary
+            'updated_at' => now(),
         ]);
 
         return back()->with('success', 'Foto profil berhasil diperbarui.');
