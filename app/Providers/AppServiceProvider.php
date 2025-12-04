@@ -7,6 +7,7 @@ use Inertia\Inertia;
 use App\Models\Tenant;
 use App\Models\Payment;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\URL;
 
 class AppServiceProvider extends ServiceProvider
 {
