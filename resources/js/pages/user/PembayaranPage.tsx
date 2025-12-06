@@ -233,12 +233,12 @@ const PembayaranPage: React.FC<PembayaranPageProps> = ({ user, payments, stats }
     }
 
     const formData = new FormData();
-    formData.append('room_id', String(selectedPayment.id)); // sesuaikan jika kamu punya room_id langsung
+    formData.append('room_id', String(selectedPayment.id));
     formData.append('amount', String(selectedPayment.amount));
     formData.append('method', paymentMethod);
 
     if (notes) formData.append('note', notes);
-    if (referenceFile) formData.append('proof', referenceFile); // ✅ NAMA HARUS "proof"
+    if (referenceFile) formData.append('proof', referenceFile);
 
     router.post('/api/payments', formData, {
       forceFormData: true,

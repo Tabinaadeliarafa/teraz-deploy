@@ -1,7 +1,6 @@
 import React from 'react';
 import { usePage, Link } from '@inertiajs/react';
 
-// Color Configuration
 const colors = {
   text: '#FFFFFF',
   buttonLogin: '#C9A982',
@@ -11,35 +10,53 @@ const colors = {
 };
 
 const Navbar = () => {
-  const { auth } = usePage<{ auth?: { user?: { name: string; } } }>().props;
+  const { auth } = usePage<{ auth?: { user?: { name: string } } }>().props;
   const user = auth?.user;
-
 
   return (
     <nav
-      className="w-full px-8 flex items-center"
-      style={{ fontFamily: "'Poppins', sans-serif", height: '85px' }}
+      className="w-full px-4 sm:px-6 md:px-8 flex items-center h-[70px] sm:h-[80px] md:h-[85px]"
+      style={{ fontFamily: "'Poppins', sans-serif" }}
     >
       <div className="max-w-7xl mx-auto flex items-center justify-between w-full min-w-0">
-        {/* Logo */}
+
+        {/* LOGO */}
         <div className="relative flex items-center flex-shrink-0">
           <img
             src="/teraZ/logo.png"
             alt="Arzeta Logo"
-            className="object-contain -ml-4"
-            style={{ height: 88, width: 88, transform: 'scale(1.8)' }}
+            className="
+              object-contain 
+              w-20 h-20 
+              sm:w-14 sm:h-14 
+              md:w-16 md:h-16 
+              lg:w-20 lg:h-20
+            "
           />
         </div>
 
+        {/* MENU */}
         <div
-          className="flex items-center gap-8 mx-4 flex-shrink min-w-0 overflow-x-auto no-scrollbar"
+          className="
+            hidden sm:flex 
+            items-center 
+            gap-4 sm:gap-6 md:gap-8 
+            mx-2 md:mx-4 
+            flex-shrink min-w-0 
+            overflow-x-auto no-scrollbar
+          "
           style={{ whiteSpace: 'nowrap' }}
         >
           {['Home', 'About', 'Facilities', 'Room', 'Testimonial'].map((item) => (
             <a
               key={item}
               href={`#${item.toLowerCase()}`}
-              className="font-medium text-sm tracking-wide transition-colors duration-200"
+              className="
+                font-medium
+                text-xs sm:text-sm md:text-base
+                tracking-wide
+                transition-colors duration-200
+              "
               style={{ color: colors.text }}
               onMouseEnter={(e) => (e.currentTarget.style.color = colors.buttonLogin)}
               onMouseLeave={(e) => (e.currentTarget.style.color = colors.text)}
@@ -49,16 +66,22 @@ const Navbar = () => {
           ))}
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-3 flex-shrink-0">
-          {/* Tombol Login atau Profil */}
+        {/* ACTION BUTTON */}
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+
+          {/* LOGIN / USER */}
           {!user ? (
             <Link href="/login">
               <button
-                className="rounded-full font-medium text-sm transition-all hover:scale-110"
+                className="
+                  rounded-full 
+                  font-medium 
+                  text-xs sm:text-sm md:text-base
+                  transition-all hover:scale-105
+                  px-3 sm:px-4 md:px-5
+                  h-8 sm:h-9 md:h-10
+                "
                 style={{
-                  minWidth: 120,
-                  height: 36,
                   backgroundColor: colors.buttonLogin,
                   color: colors.buttonContactText,
                 }}
@@ -69,10 +92,15 @@ const Navbar = () => {
           ) : (
             <Link href="/user">
               <button
-                className="rounded-full font-medium text-sm transition-all hover:scale-110"
+                className="
+                  rounded-full
+                  font-medium
+                  text-xs sm:text-sm md:text-base
+                  transition-all hover:scale-105
+                  px-3 sm:px-4 md:px-5
+                  h-8 sm:h-9 md:h-10
+                "
                 style={{
-                  minWidth: 120,
-                  height: 36,
                   backgroundColor: colors.buttonLogin,
                   color: colors.buttonContactText,
                 }}
@@ -82,19 +110,25 @@ const Navbar = () => {
             </Link>
           )}
 
-          {/* Tombol Contact Us */}
+          {/* CONTACT */}
           <a
             href="#contact"
-            className="rounded-full font-medium text-sm transition-all hover:scale-110 flex items-center justify-center"
+            className="
+              rounded-full 
+              font-medium 
+              text-xs sm:text-sm md:text-base
+              transition-all hover:scale-105 
+              flex items-center justify-center
+              px-3 sm:px-4 md:px-5
+              h-8 sm:h-9 md:h-10
+            "
             style={{
-              minWidth: 120,
-              height: 36,
               backgroundColor: colors.buttonContact,
               color: colors.buttonContactText,
               border: `2px solid ${colors.buttonContactBorder}`,
             }}
           >
-            Contact Us
+            Contact
           </a>
         </div>
       </div>

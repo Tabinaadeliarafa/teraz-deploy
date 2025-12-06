@@ -12,7 +12,8 @@ export default function LandingPage() {
   return (
     <>
       <Head title="Landing Page" />
-      <div className="min-h-screen">
+
+      <div className="min-h-screen w-full overflow-x-hidden text-base">
 
         <HeroSection />
         <AboutSection />
@@ -21,7 +22,7 @@ export default function LandingPage() {
         <TestimonialSection />
         <ContactSection />
         <Footer />
-
+        
       </div>
     </>
   );
