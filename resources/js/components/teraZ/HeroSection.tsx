@@ -136,7 +136,7 @@ const HeroSection = () => {
         {/* FEATURES */}
         <div className="mt-14 md:mt-20 pb-12">
           <div className="px-8 sm:px-12 md:px-16 lg:px-24">
-            <div className="grid grid-cols-3 gap-3 sm:gap-4 max-w-5xl mx-auto text-center">
+            <div className="grid grid-cols-3 gap-3 sm:gap-4 max-w-5xl mx-auto text-center md:mx-0 md:text-left">
               
               <div className="px-2">
                 <h4 
