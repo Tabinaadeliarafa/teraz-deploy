@@ -73,35 +73,29 @@ const Profile: React.FC<Props> = ({ user, tenant, room, unpaidCount }) => {
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (file) {
-            // Validate file size (max 2MB)
-            if (file.size > 2 * 1024 * 1024) {
-                setAlertMessage('Ukuran file maksimal 2MB');
-                setShowErrorAlert(true);
-                e.target.value = '';
-                return;
-            }
+        if (!file) return;
 
-            // Validate file type
-            if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
-                setAlertMessage('Format file harus JPG, JPEG, atau PNG');
-                setShowErrorAlert(true);
-                e.target.value = '';
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append("profile", file);
-
-            setSelectedFile(file);
-
-            // Create preview
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setPreviewUrl(reader.result as string);
-            };
-            reader.readAsDataURL(file);
+        if (file.size > 2 * 1024 * 1024) {
+            setAlertMessage('Ukuran file maksimal 2MB');
+            setShowErrorAlert(true);
+            e.target.value = '';
+            return;
         }
+
+        if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
+            setAlertMessage('Format file harus JPG, JPEG, atau PNG');
+            setShowErrorAlert(true);
+            e.target.value = '';
+            return;
+        }
+
+        setSelectedFile(file);
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setPreviewUrl(reader.result as string);
+        };
+        reader.readAsDataURL(file);
     };
 
     const handleUpload = () => {

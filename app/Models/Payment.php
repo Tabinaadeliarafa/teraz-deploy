@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Storage;
+//use Illuminate\Support\Facades\Storage;
 
 class Payment extends Model
 {
@@ -60,14 +60,8 @@ class Payment extends Model
      */
     public function getPaymentProofUrlAttribute()
     {
-        if (!$this->payment_proof) {
-            return null;
-        }
-
-        $path = 'payment_proofs/' . $this->payment_proof;
-
-        if (Storage::disk('public')->exists($path)) {
-            return asset('storage/' . $path);
+        if ($this->reference && str_starts_with($this->reference, 'http')) {
+            return $this->reference; // URL Cloudinary langsung
         }
 
         return null;

@@ -7,7 +7,7 @@ use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
+//use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -47,8 +47,10 @@ class PaymentAdminController extends Controller
                 'status_label'      => $payment->status_label,
                 'status_color'      => $payment->status_color,
                 'payment_method'    => $payment->payment_method,
-                'reference'         => $payment->reference ? asset('storage/' . $payment->reference) : null,
-                'has_proof_image'   => (bool) $payment->reference,
+                'reference' => ($payment->reference && str_starts_with($payment->reference, 'http'))
+                    ? $payment->reference
+                    : null,
+                'has_proof_image' => ($payment->reference && str_starts_with($payment->reference, 'http')),
                 'notes'             => $payment->notes,
                 'period'            => $payment->period_name,
                 'is_overdue'        => $payment->isOverdue(),
@@ -167,42 +169,31 @@ class PaymentAdminController extends Controller
                 'rejection_reason' => 'nullable|string|max:500',
             ]);
 
-            // Hapus file bukti kalau ada
-            if ($payment->reference) {
-                $path = Str::of($payment->reference)
-                    ->after('storage/')
-                    ->ltrim('/');
-
-                if ($path->isNotEmpty() && Storage::disk('public')->exists($path)) {
-                    Storage::disk('public')->delete($path);
-                }
+            // ✅ HAPUS FILE DI CLOUDINARY
+            if ($payment->reference && str_starts_with($payment->reference, 'http')) {
+                $publicId = pathinfo(parse_url($payment->reference, PHP_URL_PATH), PATHINFO_FILENAME);
+                Cloudinary::destroy("payment_proofs/" . $publicId);
             }
 
-            // Reset data pembayaran & tandai ditolak
-            $payment->status         = 'rejected';
-            $payment->notes          = $validated['rejection_reason'] ?? 'Pembayaran ditolak oleh admin.';
+            $payment->status = 'rejected';
+            $payment->notes = $validated['rejection_reason'] ?? 'Pembayaran ditolak oleh admin.';
             $payment->payment_method = null;
-            $payment->reference      = null;
-            $payment->payment_date   = null;
+            $payment->reference = null;
+            $payment->payment_date = null;
             $payment->save();
 
             DB::commit();
 
-            Log::info('Payment rejected successfully', [
-                'payment_id' => $payment->id,
-                'reason'     => $validated['rejection_reason'] ?? 'No reason provided',
-            ]);
 
             return back()->with('success', 'Pembayaran ditolak.');
+
         } catch (\Exception $e) {
+
             DB::rollBack();
 
-            Log::error('Error rejecting payment', [
-                'payment_id' => $payment->id ?? null,
-                'error'      => $e->getMessage(),
-            ]);
 
             return back()->with('error', 'Terjadi kesalahan saat menolak pembayaran.');
+
         }
     }
 
@@ -214,32 +205,23 @@ class PaymentAdminController extends Controller
         try {
             DB::beginTransaction();
 
-            if ($payment->reference) {
-                $path = Str::of($payment->reference)
-                    ->after('storage/')
-                    ->ltrim('/');
-
-                if ($path->isNotEmpty() && Storage::disk('public')->exists($path)) {
-                    Storage::disk('public')->delete($path);
-                }
+            if ($payment->reference && str_starts_with($payment->reference, 'http')) {
+                $publicId = pathinfo(parse_url($payment->reference, PHP_URL_PATH), PATHINFO_FILENAME);
+                Cloudinary::destroy("payment_proofs/" . $publicId);
             }
 
             $payment->delete();
 
             DB::commit();
 
-            Log::info('Payment deleted successfully', ['payment_id' => $payment->id]);
-
             return back()->with('success', 'Tagihan pembayaran berhasil dihapus.');
+
         } catch (\Exception $e) {
+
             DB::rollBack();
 
-            Log::error('Error deleting payment', [
-                'payment_id' => $payment->id ?? null,
-                'error'      => $e->getMessage(),
-            ]);
-
             return back()->with('error', 'Gagal menghapus pembayaran.');
+
         }
     }
 
