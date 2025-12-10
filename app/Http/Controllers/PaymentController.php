@@ -79,65 +79,42 @@ class PaymentController extends Controller
      */
     public function confirm(Request $request)
     {
-        $user = $request->user();
-
-        $tenant = Tenant::where('user_id', $user->id)
-            ->orWhere('nama', $user->name)
-            ->orWhere('kontak', $user->phone)
-            ->first();
-
-        if (!$tenant) {
-            return back()->with('error', 'Data tenant tidak ditemukan.');
-        }
-
-        // Terima beberapa kemungkinan nama field bukti bayar
-        $validated = $request->validate([
-            'payment_id'      => 'required|exists:payments,id',
-            'payment_method'  => 'required|in:cash,transfer,qris',
-            'reference'       => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
-            'payment_proof'   => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
-            'proof'           => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
-            'notes'           => 'nullable|string|max:500',
+        $request->validate([
+            'payment_id' => 'required|exists:payments,id',
+            'payment_method' => 'required|in:cash,transfer,qris',
+            'reference' => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
+            'notes' => 'nullable|string|max:500',
         ]);
 
-        $payment = Payment::findOrFail($validated['payment_id']);
+        $tenant = Tenant::where('user_id', $request->user()->id)->firstOrFail();
+
+        $payment = Payment::findOrFail($request->payment_id);
 
         if ($payment->tenant_id !== $tenant->id) {
             return back()->with('error', 'Akses ditolak.');
         }
 
-        if (!in_array($payment->status, ['pending', 'rejected'])) {
-            return back()->with('error', 'Pembayaran ini sudah dikonfirmasi atau sedang diproses.');
-        }
+        $referenceUrl = null;
 
-        // Cari file yang dikirim (apapun nama fieldnya)
-        $file = $request->file('reference')
-            ?? $request->file('payment_proof')
-            ?? $request->file('proof');
-
-        $referenceUrl = $payment->reference; // default: pakai yang lama kalau tidak upload baru
-
-        if ($file) {
-            // Upload ke Cloudinary
+        if ($request->hasFile('reference')) {
             $uploaded = Cloudinary::upload(
-                $file->getRealPath(),
+                $request->file('reference')->getRealPath(),
                 ['folder' => 'payment_proofs']
             );
 
             $referenceUrl = $uploaded->getSecurePath();
         }
 
-        // Update payment
         $payment->update([
-            'status'         => 'paid',
-            'payment_method' => $validated['payment_method'],
-            'reference'      => $referenceUrl,
-            'notes'          => $validated['notes'] ?? null,
-            'payment_date'   => now(),
-            'paid_at'        => now(),
+            'status' => 'paid',
+            'payment_method' => $request->payment_method,
+            'reference' => $referenceUrl,
+            'notes' => $request->notes,
+            'payment_date' => now(),
+            'paid_at' => now(),
         ]);
 
-        return back()->with('success', 'Pembayaran berhasil dikonfirmasi. Menunggu verifikasi admin.');
+        return back()->with('success', 'Pembayaran berhasil dikonfirmasi.');
     }
 
     /**

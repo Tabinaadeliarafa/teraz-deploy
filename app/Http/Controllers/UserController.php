@@ -111,38 +111,24 @@ class UserController extends Controller
      */
     public function updateProfilePhoto(Request $request)
     {
-        $user = $request->user();
-
         $request->validate([
             'profile_photo' => 'required|image|mimes:jpeg,jpg,png|max:2048',
         ]);
 
-        $tenant = Tenant::where('user_id', $user->id)
-            ->latest('id')
-            ->first();
+        $tenant = Tenant::where('user_id', $request->user()->id)->firstOrFail();
 
-        if (!$tenant) {
-            return back()->with('error', 'Data tenant tidak ditemukan.');
-        }
+        $uploaded = Cloudinary::upload(
+            $request->file('profile_photo')->getRealPath(),
+            ['folder' => 'profile_photos']
+        );
 
-        try {
-            // Upload ke Cloudinary
-            $uploaded = Cloudinary::upload(
-                $request->file('profile_photo')->getRealPath(),
-                ['folder' => 'profile_photos']
-            );
+        $tenant->update([
+            'profile_photo' => $uploaded->getSecurePath(),
+        ]);
 
-            // Simpan URL secure ke database
-            $tenant->update([
-                'profile_photo' => $uploaded->getSecurePath(),
-            ]);
-
-            return back()->with('success', 'Foto profil berhasil diperbarui.');
-        } catch (\Exception $e) {
-            \Log::error('Profile photo update failed: ' . $e->getMessage());
-            return back()->with('error', 'Gagal memperbarui foto profil.');
-        }
+        return back()->with('success', 'Foto profil berhasil diperbarui.');
     }
+
 
     /**
      * Dashboard admin.
