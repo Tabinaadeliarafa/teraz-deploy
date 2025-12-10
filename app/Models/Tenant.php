@@ -26,7 +26,7 @@ class Tenant extends Model
         'tanggal_selesai' => 'date',
     ];
 
-    protected $appends = [];
+    protected $appends = ['profile_photo_url'];
 
     // Untuk kebutuhan kalau nanti mau dipakai
     public function getProfilePhotoFullAttribute()
