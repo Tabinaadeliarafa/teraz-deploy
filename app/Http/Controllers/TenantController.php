@@ -207,8 +207,8 @@ class TenantController extends Controller
 
         // Upload Cloudinary
         $uploaded = Cloudinary::upload(
-            $request->file('profile_photo')->getRealPath(),
-            ['folder' => 'profile_photos']
+            $request->file('profile_photo_url')->getRealPath(),
+            ['folder' => 'profile_photos_url']
         );
 
         $tenant->update([
