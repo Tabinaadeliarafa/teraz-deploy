@@ -16,28 +16,28 @@ class TenantController extends Controller
 {
     // Show all tenants page
     public function index()
-    {
-        $tenants = Tenant::with(['room', 'user'])->get()->map(function ($tenant) {
-            return [
-                'id' => $tenant->id,
-                'name' => $tenant->nama,
-                'username' => $tenant->user ? $tenant->user->email : $tenant->kontak,
-                'phone' => $tenant->kontak,
-                'roomNumber' => $tenant->room ? $tenant->room->nomor_kamar : '-',
-                'status' => $this->mapPaymentStatus($tenant),
-                'profile_photo_url' => $tenant->profile_photo_url,
-                'start_date' => $tenant->tanggal_mulai?->format('Y-m-d'),
-                'end_date' => $tenant->tanggal_selesai?->format('Y-m-d'),
-                'tenant_status' => $tenant->status,
-            ];
-        });
+{
+    $tenants = Tenant::with(['room', 'user'])->get()->map(function ($tenant) {
+        return [
+            'id' => $tenant->id,
+            'name' => $tenant->nama,
+            'username' => $tenant->user ? $tenant->user->email : $tenant->kontak,
+            'phone' => $tenant->kontak,
+            'roomNumber' => $tenant->room ? $tenant->room->nomor_kamar : '-',
+            'status' => $this->mapPaymentStatus($tenant),
+            'profile_photo_url' => $tenant->profile_photo_url,
+            'start_date' => $tenant->tanggal_mulai?->format('Y-m-d'),
+            'end_date' => $tenant->tanggal_selesai?->format('Y-m-d'),
+            'tenant_status' => $tenant->status,
+        ];
+    });
 
-        $rooms = Room::where('status', 'tersedia')->get();
+    $rooms = Room::where('status', 'tersedia')->get();
 
-        return Inertia::render('admin/ManajemenPenghuniAdminPage', [
-            'tenants' => $tenants,
-            'availableRooms' => $rooms,
-        ]);
+    return Inertia::render('admin/ManajemenPenghuniAdminPage', [
+        'tenants' => $tenants,
+        'availableRooms' => $rooms,
+    ]);
 
         return Inertia::render('user/Profile', [
             'user'    => $user,
@@ -132,6 +132,22 @@ class TenantController extends Controller
         }
 
         return redirect()->back()->with('success', 'Tenant updated successfully.');
+    }
+
+    public function profile()
+    {
+        $user = auth()->user();
+        $tenant = Tenant::where('user_id', $user->id)->firstOrFail();
+
+        return Inertia::render('user/ProfilePage', [
+            'user' => $user,
+            'tenant' => [
+                'id' => $tenant->id,
+                'profile_photo' => $tenant->profile_photo_url,
+                'updated_at' => $tenant->updated_at,
+                'room' => $tenant->room,
+            ],
+        ]);
     }
 
     // Delete tenant

@@ -99,7 +99,7 @@ class UserController extends Controller
             ],
             'tenant' => [
                 'id'            => $tenant->id,
-                'profile_photo' => $profilePhoto,
+                'profile_photo' => $tenant->profile_photo_url,
             ],
             'room'     => $room,
             'contract' => $contract,
@@ -198,7 +198,7 @@ class UserController extends Controller
             ],
             'tenant' => [
                 'id' => $tenant->id ?? null,
-                'profile_photo' => $profilePhoto,
+                'profile_photo' => $tenant->profile_photo_url,
             ],
             'room' => $tenant && $tenant->room ? [
                 'number'        => $tenant->room->nomor_kamar,
