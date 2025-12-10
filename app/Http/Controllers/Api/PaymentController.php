@@ -14,14 +14,31 @@ class PaymentController extends Controller
      * GET /api/payments
      * Tenant melihat semua tagihan/pembayaran miliknya
      */
-    public function index()
+   public function index()
     {
         $tenantId = Auth::user()->id;
 
-        // Ambil hanya payment milik tenant login
         $payments = Payment::where('tenant_id', $tenantId)
             ->orderBy('due_date', 'desc')
-            ->get();
+            ->get()
+            ->map(function ($p) {
+                return [
+                    'id'           => $p->id,
+                    'room_id'      => $p->room_id,
+                    'amount'       => $p->amount,
+                    'method'       => $p->method,
+                    'note'         => $p->note,
+                    'status'       => $p->status,
+                    'period_year'  => $p->period_year,
+                    'period_month' => $p->period_month,
+                    'due_date'     => $p->due_date,
+                    'created_at'   => $p->created_at,
+                    'updated_at'   => $p->updated_at,
+
+                    // ⭐ Tambahan penting
+                    'proof_url'    => $p->proof_url,
+                ];
+            });
 
         return response()->json($payments);
     }

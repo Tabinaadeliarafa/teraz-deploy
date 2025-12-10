@@ -5,11 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 
 class Payment extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'tenant_id',
         'payment_type',
@@ -27,60 +26,98 @@ class Payment extends Model
         'last_notified_at',
     ];
 
+    /**
+     * Semua accessor yang harus dikirim ke frontend
+     */
     protected $appends = [
         'payment_proof_url',
         'status_label',
         'status_color',
-        'period_name',
+        'period_name'
     ];
 
+    /**
+     * Casts
+     */
     protected $casts = [
-        'amount'           => 'decimal:2',
-        'due_date'         => 'date',
-        'payment_date'     => 'date',
-        'paid_at'          => 'datetime',
+        'amount' => 'decimal:2',
+        'due_date' => 'date',
+        'payment_date' => 'date',
+        'paid_at' => 'datetime',
         'last_notified_at' => 'datetime',
     ];
 
+    /**
+     * Relasi tenant
+     */
     public function tenant()
     {
         return $this->belongsTo(Tenant::class);
     }
 
-    // URL bukti pembayaran (Cloudinary)
+    /**
+     * URL bukti pembayaran
+     */
     public function getPaymentProofUrlAttribute()
     {
-        if ($this->reference && str_starts_with($this->reference, 'http')) {
-            return $this->reference;
+        if (!$this->payment_proof) {
+            return null;
+        }
+
+        $path = 'payment_proofs/' . $this->payment_proof;
+
+        if (Storage::disk('public')->exists($path)) {
+            return asset('storage/' . $path);
         }
 
         return null;
     }
 
+    /**
+     * Status label
+     */
     public function getStatusLabelAttribute()
     {
         return match ($this->status) {
-            'pending'   => 'Belum Bayar',
-            'paid'      => 'Menunggu Konfirmasi',
+            'pending' => 'Belum Bayar',
+            'paid' => 'Menunggu Konfirmasi',
             'confirmed' => 'Lunas',
-            'rejected'  => 'Ditolak',
-            'overdue'   => 'Terlambat',
-            default     => 'Tidak Diketahui',
+            'rejected' => 'Ditolak',
+            'overdue' => 'Terlambat',
+            default => 'Tidak Diketahui'
         };
     }
 
+    public function getProofUrlAttribute()
+    {
+        if (!$this->proof_path) return null;
+
+        // Kalau sudah Cloudinary URL
+        if (str_starts_with($this->proof_path, 'http')) {
+            return $this->proof_path;
+        }
+
+        return asset('storage/' . $this->proof_path);
+    }
+
+    /**
+     * Status color
+     */
     public function getStatusColorAttribute()
     {
         return match ($this->status) {
             'confirmed' => 'green',
-            'paid'      => 'blue',
-            'pending'   => 'yellow',
-            'rejected'  => 'red',
-            'overdue'   => 'red',
-            default     => 'gray',
+            'paid' => 'blue',
+            'pending' => 'yellow',
+            'rejected' => 'red',
+            'overdue' => 'red',
+            default => 'gray',
         };
     }
 
+    /**
+     * Nama periode (Januari 2025 dst)
+     */
     public function getPeriodNameAttribute(): string
     {
         if (!$this->period_month || !$this->period_year) {
@@ -90,12 +127,15 @@ class Payment extends Model
         $months = [
             1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
             5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
-            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
         ];
 
         return $months[$this->period_month] . ' ' . $this->period_year;
     }
 
+    /**
+     * Scope pembayaran yang perlu diingatkan
+     */
     public function scopeNeedReminder($query)
     {
         $today = Carbon::today();
@@ -108,6 +148,9 @@ class Payment extends Model
             });
     }
 
+    /**
+     * Overdue checker
+     */
     public function isOverdue(): bool
     {
         if (in_array($this->status, ['paid', 'confirmed'])) {

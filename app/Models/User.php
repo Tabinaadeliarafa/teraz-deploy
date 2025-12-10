@@ -21,14 +21,13 @@ class User extends Authenticatable
         'profile'
     ];
 
-    protected $appends = [];
+    protected $appends = ['profile_url'];
 
     public function getProfileUrlAttribute()
     {
-        if ($this->profile && str_starts_with($this->profile, 'http')) {
-            return $this->profile; // ✅ URL Cloudinary langsung
+        if ($this->profile && Storage::disk('public')->exists($this->profile)) {
+            return asset('storage/' . $this->profile);
         }
-
         return asset('images/default-user.png');
     }
 

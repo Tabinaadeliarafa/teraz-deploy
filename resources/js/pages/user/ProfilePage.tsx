@@ -63,39 +63,46 @@ const Profile: React.FC<Props> = ({ user, tenant, room, unpaidCount }) => {
     };
 
     // FIXED: getProfilePhotoUrl dengan cache busting yang lebih reliable
-   const getProfilePhotoUrl = () => {
-        if (tenant.profile_photo && tenant.profile_photo.startsWith('http')) {
-            return tenant.profile_photo;
+    const getProfilePhotoUrl = () => {
+        if (tenant.profile_photo) {
+            // Gunakan updated_at dari server jika tersedia, fallback ke imageKey
+            const timestamp = tenant.updated_at ? new Date(tenant.updated_at).getTime() : imageKey;
+            return `${tenant.profile_photo}?v=${timestamp}`;
         }
-        return '/teraZ/testi1.png';
+        return '/teraZ/testi1.png'; // Default fallback
     };
-
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file) return;
+        if (file) {
+            // Validate file size (max 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                setAlertMessage('Ukuran file maksimal 2MB');
+                setShowErrorAlert(true);
+                e.target.value = '';
+                return;
+            }
 
-        if (file.size > 2 * 1024 * 1024) {
-            setAlertMessage('Ukuran file maksimal 2MB');
-            setShowErrorAlert(true);
-            e.target.value = '';
-            return;
+            // Validate file type
+            if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
+                setAlertMessage('Format file harus JPG, JPEG, atau PNG');
+                setShowErrorAlert(true);
+                e.target.value = '';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("profile", file);
+
+            setSelectedFile(file);
+
+            // Create preview
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPreviewUrl(reader.result as string);
+            };
+            reader.readAsDataURL(file);
         }
-
-        if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
-            setAlertMessage('Format file harus JPG, JPEG, atau PNG');
-            setShowErrorAlert(true);
-            e.target.value = '';
-            return;
-        }
-
-        setSelectedFile(file);
-
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            setPreviewUrl(reader.result as string);
-        };
-        reader.readAsDataURL(file);
     };
 
     const handleUpload = () => {

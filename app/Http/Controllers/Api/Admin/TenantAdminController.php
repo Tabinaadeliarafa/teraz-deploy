@@ -11,6 +11,8 @@ use App\Models\User;
 use App\Models\Room;
 use App\Models\Tenant;
 use App\Models\Payment;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
+
 
 class TenantAdminController extends Controller
 {
@@ -161,6 +163,16 @@ class TenantAdminController extends Controller
 
     public function update(Request $request, Tenant $tenant)
     {
+        if ($request->hasFile('profile_photo')) {
+            $upload = Cloudinary::upload(
+                $request->file('profile_photo')->getRealPath(),
+                ['folder' => 'tenant_profile']
+            );
+
+            $tenant->profile_photo = $upload->getSecurePath();
+            $tenant->save();
+        }
+
         $data = $request->validate([
             'name'             => ['sometimes', 'string', 'max:255'],
             'username'         => ['sometimes', 'string', 'max:100'],
@@ -215,6 +227,21 @@ class TenantAdminController extends Controller
         }
 
         $tenant->save();
+
+        // Upload foto profil tenant jika dikirim
+        if ($request->hasFile('profile_photo')) {
+
+            // Upload ke Cloudinary
+            $upload = Cloudinary::upload(
+                $request->file('profile_photo')->getRealPath(),
+                ['folder' => 'tenant_profile']
+            );
+
+            // Simpan URL cloudinary ke database
+            $tenant->profile_photo = $upload->getSecurePath();
+            $tenant->save();
+        }
+
 
         return response()->json([
             'message' => 'Data tenant berhasil diperbarui',

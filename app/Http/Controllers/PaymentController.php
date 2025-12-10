@@ -32,27 +32,36 @@ class PaymentController extends Controller
             ->orderByDesc('period_month')
             ->get()
             ->map(function ($payment) {
+                // Check if reference is a path (not full URL)
+                $referenceUrl = null;
+                if ($payment->reference) {
+                    // If it starts with 'http', it's already a full URL (old data)
+                    if (str_starts_with($payment->reference, 'http')) {
+                        $referenceUrl = $payment->reference;
+                    } else {
+                        // Convert path to URL
+                        $referenceUrl = asset('storage/' . $payment->reference);
+                    }
+                }
 
-            $referenceUrl = $payment->reference;
-
-            return [
-                'id' => $payment->id,
-                'payment_type' => $payment->payment_type,
-                'payment_type_label' => $this->mapPaymentType($payment->payment_type),
-                'amount' => $payment->amount,
-                'due_date' => $payment->due_date->format('d M Y'),
-                'payment_date' => $payment->payment_date?->format('d M Y'),
-                'status' => $payment->status,
-                'status_label' => $payment->status_label,
-                'status_color' => $payment->status_color,
-                'payment_method' => $payment->payment_method,
-                'reference' => $referenceUrl, // ✅ INI YANG DIPAKAI FRONTEND
-                'has_proof_image' => $payment->reference ? true : false,
-                'notes' => $payment->notes,
-                'period' => $payment->period_name,
-                'is_overdue' => $payment->isOverdue(),
-            ];
-        });
+                return [
+                    'id' => $payment->id,
+                    'payment_type' => $payment->payment_type,
+                    'payment_type_label' => $this->mapPaymentType($payment->payment_type),
+                    'amount' => $payment->amount,
+                    'due_date' => $payment->due_date->format('d M Y'),
+                    'payment_date' => $payment->payment_date?->format('d M Y'),
+                    'status' => $payment->status,
+                    'status_label' => $payment->status_label,
+                    'status_color' => $payment->status_color,
+                    'payment_method' => $payment->payment_method,
+                    'reference' => $referenceUrl, // ✅ Full URL for frontend
+                    'has_proof_image' => $payment->reference ? true : false,
+                    'notes' => $payment->notes,
+                    'period' => $payment->period_name,
+                    'is_overdue' => $payment->isOverdue(),
+                ];
+            });
 
         $stats = [
             'total' => $payments->count(),

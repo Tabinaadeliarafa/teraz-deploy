@@ -31,12 +31,29 @@ class Tenant extends Model
     // Untuk kebutuhan kalau nanti mau dipakai
     public function getProfilePhotoFullAttribute()
     {
-        if ($this->profile_photo && str_starts_with($this->profile_photo, 'http')) {
+        if (!$this->profile_photo) return null;
+
+        // Jika sudah URL Cloudinary
+        if (str_starts_with($this->profile_photo, 'http')) {
             return $this->profile_photo;
         }
 
-        return asset('teraZ/default-user.png');
+        // fallback kalau pakai storage lokal
+        return asset('storage/' . $this->profile_photo);
     }
+    
+    public function getPhotoUrlAttribute()
+    {
+        if (!$this->profile_photo) return null;
+
+        // Jika sudah berupa URL cloudinary → return langsung
+        if (str_starts_with($this->profile_photo, 'http')) {
+            return $this->profile_photo;
+        }
+
+        return asset('storage/'.$this->profile_photo);
+    }
+
 
     public function user()
     {

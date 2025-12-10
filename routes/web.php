@@ -25,15 +25,15 @@ Route::post('/logout', [LoginController::class, 'logout'])
     ->middleware('auth')
     ->name('logout');
 
-//Route::get('/storage/{path}', function ($path) {
-  //  $fullPath = storage_path('app/public/' . $path);
-    //if (!file_exists($fullPath)) abort(404);
-    //return response()->file($fullPath, [
-      //  'Cache-Control' => 'no-cache, no-store, must-revalidate',
-        //'Pragma' => 'no-cache',
-        //'Expires' => '0'
-    //]);
-//})->where('path', '.*')->name('storage');
+Route::get('/storage/{path}', function ($path) {
+    $fullPath = storage_path('app/public/' . $path);
+    if (!file_exists($fullPath)) abort(404);
+    return response()->file($fullPath, [
+        'Cache-Control' => 'no-cache, no-store, must-revalidate',
+        'Pragma' => 'no-cache',
+        'Expires' => '0'
+    ]);
+})->where('path', '.*')->name('storage');
 
 
 // ========================
