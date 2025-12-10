@@ -55,7 +55,7 @@ class TenantAdminController extends Controller
             'updated_at'    => $t->updated_at,
 
             // ⬇️ inilah yang kamu tanyakan
-            'profile_photo' => $t->profile_photo_full,
+            'profile_photo_url' => $tenant->profile_photo_url,
 
             // Kalau admin butuh info user & room juga:
             'user' => [

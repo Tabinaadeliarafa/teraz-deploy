@@ -78,10 +78,16 @@ class Tenant extends Model
     // Dipakai kalau butuh URL profile di frontend lain
     public function getProfilePhotoUrlAttribute()
     {
-        if ($this->profile_photo && str_starts_with($this->profile_photo, 'http')) {
+        if (!$this->profile_photo) {
+            return null;
+        }
+
+        // Jika sudah berupa URL Cloudinary
+        if (str_starts_with($this->profile_photo, 'http')) {
             return $this->profile_photo;
         }
 
-        return asset('teraZ/testi1.png');
+        // Fallback (tidak akan dipakai di Railway)
+        return asset('storage/' . $this->profile_photo);
     }
 }

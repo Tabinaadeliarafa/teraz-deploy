@@ -25,9 +25,7 @@ class TenantController extends Controller
                 'phone' => $tenant->kontak,
                 'roomNumber' => $tenant->room ? $tenant->room->nomor_kamar : '-',
                 'status' => $this->mapPaymentStatus($tenant),
-                'photo' => $tenant->profile_photo 
-                    ? $tenant->profile_photo   
-                    : asset('teraZ/testi1.png'),
+                'profile_photo_url' => $tenant->profile_photo_url,
                 'start_date' => $tenant->tanggal_mulai?->format('Y-m-d'),
                 'end_date' => $tenant->tanggal_selesai?->format('Y-m-d'),
                 'tenant_status' => $tenant->status,
@@ -45,7 +43,7 @@ class TenantController extends Controller
             'user'    => $user,
             'tenant'  => [
                 'id'            => $tenant->id,
-                'profile_photo' => $tenant->profile_photo_full, // <- PERHATIKAN INI
+                'profile_photo' => $tenant->profile_photo_url, // <- PERHATIKAN INI
                 'updated_at'    => $tenant->updated_at,
             ],
             // room, contract, dst...
@@ -195,6 +193,7 @@ class TenantController extends Controller
 
         $tenant->update([
             'profile_photo' => $uploaded->getSecurePath(), // ✅ URL cloudinary
+            
             'updated_at' => now(),
         ]);
 
