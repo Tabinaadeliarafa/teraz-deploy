@@ -42,14 +42,6 @@ Route::get('/storage/{path}', function ($path) {
 Route::middleware(['auth', 'role:tenant'])->group(function () {
     Route::get('/profile', [UserController::class, 'profile'])->name('profile');
     Route::post('/profile/update-photo', [UserController::class, 'updateProfilePhoto'])->name('profile.updatePhoto');
-    Route::get('/profile/photo/{tenant}', function (Tenant $tenant) {
-    return response()->json([
-        'id' => $tenant->id,
-        'photo_url' => $tenant->profile_photo_url,
-        'updated_at' => $tenant->updated_at,
-    ]);
-});
-
 
     Route::get('/lapor-kerusakan', [MaintenanceController::class, 'index'])->name('maintenance.index');
     Route::post('/lapor-kerusakan', [MaintenanceController::class, 'store'])->name('maintenance.store');
