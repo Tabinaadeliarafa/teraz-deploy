@@ -25,16 +25,8 @@ Route::post('/logout', [LoginController::class, 'logout'])
     ->middleware('auth')
     ->name('logout');
 
-//Route::get('/storage/{path}', function ($path) {
-  //  $fullPath = storage_path('app/public/' . $path);
-    //if (!file_exists($fullPath)) abort(404);
-    //return response()->file($fullPath, [
-      //  'Cache-Control' => 'no-cache, no-store, must-revalidate',
-        //'Pragma' => 'no-cache',
-        //'Expires' => '0'
-    //]);
-//})->where('path', '.*')->name('storage');
-
+// Route custom storage TIDAK DIPAKAI LAGI UNTUK CLOUDINARY
+// Route::get('/storage/{path}', function ($path) { ... });
 
 // ========================
 // TENANT ROUTES
@@ -49,7 +41,6 @@ Route::middleware(['auth', 'role:tenant'])->group(function () {
     Route::get('/pembayaran', [PaymentController::class, 'index'])->name('tenant.pembayaran');
     Route::post('/pembayaran/confirm', [PaymentController::class, 'confirm'])->name('tenant.pembayaran.confirm');
 });
-
 
 // ========================
 // ADMIN ROUTES
@@ -94,7 +85,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::patch('/maintenance/{maintenance}', [MaintenanceAdminController::class, 'update'])->name('maintenance.update');
     Route::delete('/maintenance/{maintenance}', [MaintenanceAdminController::class, 'destroy'])->name('maintenance.destroy');
 
-    // Pengeluaran (INI HARUSNYA DI DALAM GROUP ADMIN)
+    // Pengeluaran
     Route::get('/pengeluaran', [PengeluaranController::class, 'index'])->name('pengeluaran.index');
     Route::post('/pengeluaran', [PengeluaranController::class, 'store'])->name('pengeluaran.store');
     Route::patch('/pengeluaran/{id}', [PengeluaranController::class, 'update'])->name('pengeluaran.update');

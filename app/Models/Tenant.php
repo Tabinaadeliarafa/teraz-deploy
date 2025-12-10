@@ -14,21 +14,21 @@ class Tenant extends Model
         'room_id',
         'nama',
         'kontak',
-        'profile_photo', // Add this
+        'profile_photo',
         'tanggal_mulai',
         'tanggal_selesai',
         'status',
         'catatan',
-        'profile_photo',
     ];
 
     protected $casts = [
-        'tanggal_mulai' => 'date',
+        'tanggal_mulai'   => 'date',
         'tanggal_selesai' => 'date',
     ];
 
     protected $appends = [];
 
+    // Untuk kebutuhan kalau nanti mau dipakai
     public function getProfilePhotoFullAttribute()
     {
         if ($this->profile_photo && str_starts_with($this->profile_photo, 'http')) {
@@ -58,7 +58,7 @@ class Tenant extends Model
         return $this->hasMany(MaintenanceRequest::class);
     }
 
-    // Get profile photo URL
+    // Dipakai kalau butuh URL profile di frontend lain
     public function getProfilePhotoUrlAttribute()
     {
         if ($this->profile_photo && str_starts_with($this->profile_photo, 'http')) {

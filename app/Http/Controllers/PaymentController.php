@@ -8,7 +8,6 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
-
 class PaymentController extends Controller
 {
     /**
@@ -17,7 +16,7 @@ class PaymentController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        
+
         $tenant = Tenant::where('user_id', $user->id)
             ->orWhere('nama', $user->name)
             ->orWhere('kontak', $user->phone)
@@ -32,40 +31,39 @@ class PaymentController extends Controller
             ->orderByDesc('period_month')
             ->get()
             ->map(function ($payment) {
+                $referenceUrl = $payment->reference; // sekarang berisi URL Cloudinary
 
-            $referenceUrl = $payment->reference;
-
-            return [
-                'id' => $payment->id,
-                'payment_type' => $payment->payment_type,
-                'payment_type_label' => $this->mapPaymentType($payment->payment_type),
-                'amount' => $payment->amount,
-                'due_date' => $payment->due_date->format('d M Y'),
-                'payment_date' => $payment->payment_date?->format('d M Y'),
-                'status' => $payment->status,
-                'status_label' => $payment->status_label,
-                'status_color' => $payment->status_color,
-                'payment_method' => $payment->payment_method,
-                'reference' => $referenceUrl, // ✅ INI YANG DIPAKAI FRONTEND
-                'has_proof_image' => $payment->reference ? true : false,
-                'notes' => $payment->notes,
-                'period' => $payment->period_name,
-                'is_overdue' => $payment->isOverdue(),
-            ];
-        });
+                return [
+                    'id'                 => $payment->id,
+                    'payment_type'       => $payment->payment_type,
+                    'payment_type_label' => $this->mapPaymentType($payment->payment_type),
+                    'amount'             => $payment->amount,
+                    'due_date'           => $payment->due_date->format('d M Y'),
+                    'payment_date'       => $payment->payment_date?->format('d M Y'),
+                    'status'             => $payment->status,
+                    'status_label'       => $payment->status_label,
+                    'status_color'       => $payment->status_color,
+                    'payment_method'     => $payment->payment_method,
+                    'reference'          => $referenceUrl,
+                    'has_proof_image'    => (bool) $payment->reference,
+                    'notes'              => $payment->notes,
+                    'period'             => $payment->period_name,
+                    'is_overdue'         => $payment->isOverdue(),
+                ];
+            });
 
         $stats = [
-            'total' => $payments->count(),
-            'pending' => $payments->where('status', 'pending')->count(),
+            'total'            => $payments->count(),
+            'pending'          => $payments->where('status', 'pending')->count(),
             'waiting_approval' => $payments->where('status', 'paid')->count(),
-            'confirmed' => $payments->where('status', 'confirmed')->count(),
-            'overdue' => $payments->where('is_overdue', true)->count(),
+            'confirmed'        => $payments->where('status', 'confirmed')->count(),
+            'overdue'          => $payments->where('is_overdue', true)->count(),
         ];
 
         return Inertia::render('user/PembayaranPage', [
             'user' => [
                 'id'       => $user->id,
-                'name'     => $tenant->nama ?? $user->name,   
+                'name'     => $tenant->nama ?? $user->name,
                 'username' => $user->username,
                 'phone'    => $user->phone,
                 'role'     => $user->role,
@@ -76,15 +74,13 @@ class PaymentController extends Controller
         ]);
     }
 
-
-
     /**
-     * Tenant fills/updates payment details (NOT create)
+     * Tenant mengisi / update detail pembayaran (bukan create tagihan)
      */
     public function confirm(Request $request)
     {
         $user = $request->user();
-        
+
         $tenant = Tenant::where('user_id', $user->id)
             ->orWhere('nama', $user->name)
             ->orWhere('kontak', $user->phone)
@@ -94,11 +90,14 @@ class PaymentController extends Controller
             return back()->with('error', 'Data tenant tidak ditemukan.');
         }
 
+        // Terima beberapa kemungkinan nama field bukti bayar
         $validated = $request->validate([
-            'payment_id' => 'required|exists:payments,id',
-            'payment_method' => 'required|in:cash,transfer,qris',
-            'reference' => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
-            'notes' => 'nullable|string|max:500',
+            'payment_id'      => 'required|exists:payments,id',
+            'payment_method'  => 'required|in:cash,transfer,qris',
+            'reference'       => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
+            'payment_proof'   => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
+            'proof'           => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
+            'notes'           => 'nullable|string|max:500',
         ]);
 
         $payment = Payment::findOrFail($validated['payment_id']);
@@ -111,50 +110,47 @@ class PaymentController extends Controller
             return back()->with('error', 'Pembayaran ini sudah dikonfirmasi atau sedang diproses.');
         }
 
-        // Handle file upload
-        $referenceUrl = null;
+        // Cari file yang dikirim (apapun nama fieldnya)
+        $file = $request->file('reference')
+            ?? $request->file('payment_proof')
+            ?? $request->file('proof');
 
-        if ($request->hasFile('reference')) {
+        $referenceUrl = $payment->reference; // default: pakai yang lama kalau tidak upload baru
 
-            // Upload langsung ke Cloudinary
+        if ($file) {
+            // Upload ke Cloudinary
             $uploaded = Cloudinary::upload(
-                $request->file('reference')->getRealPath(),
-                [
-                    'folder' => 'payment_proofs'
-                ]
+                $file->getRealPath(),
+                ['folder' => 'payment_proofs']
             );
 
-            $referenceUrl = $uploaded->getSecurePath(); // ✅ URL CLOUDINARY
+            $referenceUrl = $uploaded->getSecurePath();
         }
 
-
-        // Update payment - save ONLY the path, not the full URL
-       $payment->update([
-        'status' => 'paid',
-        'payment_method' => $validated['payment_method'],
-        'reference' => $referenceUrl, // SIMPAN URL CLOUDINARY
-        'notes' => $validated['notes'] ?? null,
-        'payment_date' => now(),
-        'paid_at' => now(),
-    ]);
+        // Update payment
+        $payment->update([
+            'status'         => 'paid',
+            'payment_method' => $validated['payment_method'],
+            'reference'      => $referenceUrl,
+            'notes'          => $validated['notes'] ?? null,
+            'payment_date'   => now(),
+            'paid_at'        => now(),
+        ]);
 
         return back()->with('success', 'Pembayaran berhasil dikonfirmasi. Menunggu verifikasi admin.');
     }
-
-
-
 
     /**
      * Map payment type to Indonesian label
      */
     private function mapPaymentType($type): string
     {
-        return match($type) {
-            'rent' => 'Sewa Bulanan',
-            'deposit' => 'Deposit',
-            'utilities' => 'Utilitas',
+        return match ($type) {
+            'rent'        => 'Sewa Bulanan',
+            'deposit'     => 'Deposit',
+            'utilities'   => 'Utilitas',
             'maintenance' => 'Maintenance',
-            default => 'Lainnya',
+            default       => 'Lainnya',
         };
     }
 }
