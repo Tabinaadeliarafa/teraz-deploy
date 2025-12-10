@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 class UserController extends Controller
 {
@@ -84,9 +85,10 @@ class UserController extends Controller
         ];
 
         // Foto profil dengan cache busting
-        $profilePhoto = $tenant->profile_photo
-            ? asset('storage/' . $tenant->profile_photo) . '?v=' . strtotime($tenant->updated_at)
-            : asset('teraZ/testi1.png');
+       $profilePhoto = asset('teraZ/testi1.png');
+        if ($tenant->profile_photo && str_starts_with($tenant->profile_photo, 'http')) {
+            $profilePhoto = $tenant->profile_photo . '?v=' . strtotime($tenant->updated_at);
+        }
 
         return Inertia::render('user/ProfilePage', [
             'user' => [
@@ -132,19 +134,17 @@ class UserController extends Controller
         }
 
         try {
-            // Delete old photo if exists
-            if ($tenant->profile_photo && Storage::disk('public')->exists($tenant->profile_photo)) {
-                Storage::disk('public')->delete($tenant->profile_photo);
-            }
+            // Upload foto baru ke Cloudinary
+            $uploaded = Cloudinary::upload(
+                $request->file('profile_photo')->getRealPath(),
+                [
+                    'folder' => 'profile_photos',
+                ]
+            );
 
-            // Upload new photo
-            $file = $request->file('profile_photo');
-            $filename = 'profile_' . $tenant->id . '_' . time() . '.' . $file->extension();
-            $path = $file->storeAs('profile_photos', $filename, 'public');
-
-            // Update tenant
+            // Simpan URL Cloudinary ke database
             $tenant->update([
-                'profile_photo' => $path,
+                'profile_photo' => $uploaded->getSecurePath(),
             ]);
 
             return back()->with('success', 'Foto profil berhasil diperbarui.');
@@ -183,9 +183,9 @@ class UserController extends Controller
             ->first();
 
         // Get profile photo URL dengan cache busting
-        $profilePhoto = asset('teraZ/testi1.png'); // Default
-        if ($tenant && $tenant->profile_photo) {
-            $profilePhoto = asset('storage/' . $tenant->profile_photo) . '?v=' . strtotime($tenant->updated_at);
+        $profilePhoto = asset('teraZ/testi1.png');
+        if ($tenant && $tenant->profile_photo && str_starts_with($tenant->profile_photo, 'http')) {
+            $profilePhoto = $tenant->profile_photo . '?v=' . strtotime($tenant->updated_at);
         }
 
         return response()->json([

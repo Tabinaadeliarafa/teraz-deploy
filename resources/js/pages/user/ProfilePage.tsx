@@ -63,14 +63,13 @@ const Profile: React.FC<Props> = ({ user, tenant, room, unpaidCount }) => {
     };
 
     // FIXED: getProfilePhotoUrl dengan cache busting yang lebih reliable
-    const getProfilePhotoUrl = () => {
-        if (tenant.profile_photo) {
-            // Gunakan updated_at dari server jika tersedia, fallback ke imageKey
-            const timestamp = tenant.updated_at ? new Date(tenant.updated_at).getTime() : imageKey;
-            return `${tenant.profile_photo}?v=${timestamp}`;
+   const getProfilePhotoUrl = () => {
+        if (tenant.profile_photo && tenant.profile_photo.startsWith('http')) {
+            return tenant.profile_photo;
         }
-        return '/teraZ/testi1.png'; // Default fallback
+        return '/teraZ/testi1.png';
     };
+
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];

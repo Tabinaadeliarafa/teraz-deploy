@@ -9,8 +9,9 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Controllers\RoomController;
-use Illuminate\Support\Facades\Storage;
+//use Illuminate\Support\Facades\Storage;
 use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
+use Illuminate\Support\Facades\Auth;
 
 class TenantController extends Controller
 {
@@ -25,9 +26,9 @@ class TenantController extends Controller
                 'phone' => $tenant->kontak,
                 'roomNumber' => $tenant->room ? $tenant->room->nomor_kamar : '-',
                 'status' => $this->mapPaymentStatus($tenant),
-                'photo' => $tenant->profile_photo 
-                    ? $tenant->profile_photo   
-                    : asset('teraZ/testi1.png'),
+                'photo' => ($tenant->profile_photo && str_starts_with($tenant->profile_photo, 'http'))
+                ? $tenant->profile_photo
+                : asset('teraZ/testi1.png'),
                 'start_date' => $tenant->tanggal_mulai?->format('Y-m-d'),
                 'end_date' => $tenant->tanggal_selesai?->format('Y-m-d'),
                 'tenant_status' => $tenant->status,
@@ -145,9 +146,10 @@ class TenantController extends Controller
         $roomId = $tenant->room_id;
         
         // Hapus foto profil jika ada
-        if ($tenant->profile_photo && Storage::disk('public')->exists($tenant->profile_photo)) {
-            Storage::disk('public')->delete($tenant->profile_photo);
-        }
+        if ($tenant->profile_photo && str_starts_with($tenant->profile_photo, 'http')) {
+        $publicId = pathinfo(parse_url($tenant->profile_photo, PHP_URL_PATH), PATHINFO_FILENAME);
+        Cloudinary::destroy("profile_photos/" . $publicId);
+    }
         
         // Delete tenant
         $tenant->delete();
@@ -213,19 +215,19 @@ class TenantController extends Controller
             'profile_photo' => 'required|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
-        // Hapus foto lama jika ada
-        if ($tenant->profile_photo && Storage::disk('public')->exists($tenant->profile_photo)) {
-            Storage::disk('public')->delete($tenant->profile_photo);
+        if ($tenant->profile_photo && str_starts_with($tenant->profile_photo, 'http')) {
+            $publicId = pathinfo(parse_url($tenant->profile_photo, PHP_URL_PATH), PATHINFO_FILENAME);
+            Cloudinary::destroy("profile_photos/" . $publicId);
         }
 
-        // Simpan foto baru
-        $file = $request->file('profile_photo');
-        $filename = 'tenant_' . $tenant->id . '_' . time() . '.' . $file->extension();
-        $path = $file->storeAs('profile_photos', $filename, 'public');
+        // ✅ UPLOAD BARU KE CLOUDINARY
+        $uploaded = Cloudinary::upload(
+            $request->file('profile_photo')->getRealPath(),
+            ['folder' => 'profile_photos']
+        );
 
-        // Update path foto di database
         $tenant->update([
-            'profile_photo' => $path,
+            'profile_photo' => $uploaded->getSecurePath(), // ✅ URL cloudinary
             'updated_at' => now(),
         ]);
 

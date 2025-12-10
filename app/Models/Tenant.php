@@ -27,17 +27,15 @@ class Tenant extends Model
         'tanggal_selesai' => 'date',
     ];
 
-    protected $appends = ['profile_photo_full'];
+    protected $appends = [];
 
     public function getProfilePhotoFullAttribute()
     {
-        if ($this->profile_photo && Storage::disk('public')->exists($this->profile_photo)) {
-            // URL publik: http://APP_URL/storage/profile_photos/abc123.jpg
-            return asset('storage/' . $this->profile_photo);
+        if ($this->profile_photo && str_starts_with($this->profile_photo, 'http')) {
+            return $this->profile_photo;
         }
 
-        // fallback kalau belum ada foto
-        return asset('teraZ/default-user.png'); // atau path default kamu
+        return asset('teraZ/default-user.png');
     }
 
     public function user()
@@ -63,9 +61,10 @@ class Tenant extends Model
     // Get profile photo URL
     public function getProfilePhotoUrlAttribute()
     {
-        if ($this->profile_photo) {
-            return asset('storage/' . $this->profile_photo);
+        if ($this->profile_photo && str_starts_with($this->profile_photo, 'http')) {
+            return $this->profile_photo;
         }
-        return asset('teraZ/testi1.png'); // Default image
+
+        return asset('teraZ/testi1.png');
     }
 }
