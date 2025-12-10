@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tenant;
+use App\Models\Payment;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
@@ -17,7 +19,7 @@ class UserController extends Controller
     {
         $u = $request->user();
 
-        // Cari tenant pakai user_id langsung (lebih aman)
+        // Cari tenant pakai user_id langsung (lebih aman daripada nama/kontak)
         $tenant = Tenant::with('room')
             ->where('user_id', $u->id)
             ->latest('id')
@@ -28,36 +30,39 @@ class UserController extends Controller
         }
 
         $unpaidCount = $tenant->payments()
-            ->where('status', 'pending')
-            ->count();
+        ->where('status', 'pending')   // sesuaikan kalau status di DB-mu beda, misal 'unpaid'
+        ->count();
+
 
         $unpaidMonths = $tenant->payments()
-            ->where('status', 'pending')
-            ->get()
-            ->groupBy(function ($p) {
-                return sprintf('%04d-%02d', $p->period_year, $p->period_month);
-            })
-            ->map(function ($items, $month) {
-                return [
-                    'month'     => $month,
-                    'monthName' => Carbon::parse($month . '-01')->translatedFormat('F Y'),
-                    'total'     => $items->sum('amount'),
-                ];
-            })
-            ->values();
+        ->where('status', 'pending')
+        ->get()
+        ->groupBy(function ($p) {
+            // bikin string "2025-08"
+            return sprintf('%04d-%02d', $p->period_year, $p->period_month);
+        })
+        ->map(function ($items, $month) {
+            return [
+                'month'     => $month, // contoh: "2025-08"
+                'monthName' => Carbon::parse($month . '-01')->translatedFormat('F Y'),
+                'total'     => $items->sum('amount'),
+            ];
+        })
+        ->values();
 
         $rejectedPayments = $tenant->payments()
-            ->where('status', 'rejected')
-            ->orderBy('period_year')
-            ->orderBy('period_month')
-            ->get()
-            ->map(function ($p) {
-                return [
-                    'month'     => sprintf('%04d-%02d', $p->period_year, $p->period_month),
-                    'monthName' => Carbon::create($p->period_year, $p->period_month, 1)->translatedFormat('F Y'),
-                    'reason'    => $p->notes ?? 'Tidak ada alasan',
-                ];
-            });
+        ->where('status', 'rejected')
+        ->orderBy('period_year')
+        ->orderBy('period_month')
+        ->get()
+        ->map(function ($p) {
+            return [
+                'month'     => sprintf('%04d-%02d', $p->period_year, $p->period_month),
+                'monthName' => Carbon::create($p->period_year, $p->period_month, 1)->translatedFormat('F Y'),
+                'reason'    => $p->notes ?? 'Tidak ada alasan',
+            ];
+        });
+
 
         // Map data room
         $room = $tenant->room ? [
@@ -79,8 +84,8 @@ class UserController extends Controller
             'note'            => $tenant->catatan,
         ];
 
-        // Foto profil dengan cache busting (Cloudinary URL atau default)
-        $profilePhoto = asset('teraZ/testi1.png');
+        // Foto profil dengan cache busting
+       $profilePhoto = asset('teraZ/testi1.png');
         if ($tenant->profile_photo && str_starts_with($tenant->profile_photo, 'http')) {
             $profilePhoto = $tenant->profile_photo . '?v=' . strtotime($tenant->updated_at);
         }
@@ -88,47 +93,66 @@ class UserController extends Controller
         return Inertia::render('user/ProfilePage', [
             'user' => [
                 'id'       => $u->id,
-                'name'     => $tenant->nama ?? $u->name,
+                'name'     => $tenant->nama ?? $u->name, 
                 'username' => $tenant->user?->email ?? $u->username,
                 'phone'    => $tenant->kontak,
                 'role'     => $u->role,
-                'room'     => $tenant->room->nomor_kamar ?? null,
+                'room'     => $tenant->room->nomor_kamar ?? null, 
             ],
             'tenant' => [
                 'id'            => $tenant->id,
                 'profile_photo' => $profilePhoto,
             ],
-            'room'            => $room,
-            'contract'        => $contract,
-            'unpaidCount'     => $unpaidCount,
-            'unpaidMonths'    => $unpaidMonths,
-            'rejectedPayments'=> $rejectedPayments,
+            'room'     => $room,
+            'contract' => $contract,
+
+            'unpaidCount' => $unpaidCount,
+            'unpaidMonths' => $unpaidMonths,
+            'rejectedPayments' => $rejectedPayments,
         ]);
     }
 
+
     /**
-     * Update profile photo (tenant yang sedang login)
+     * Update profile photo
      */
     public function updateProfilePhoto(Request $request)
     {
+        $user = $request->user();
+
         $request->validate([
-            'profile_photo' => 'required|image|mimes:jpeg,jpg,png|max:2048',
+            'profile_photo' => 'required|image|mimes:jpeg,jpg,png|max:2048', // Max 2MB
         ]);
 
-        $tenant = Tenant::where('user_id', $request->user()->id)->firstOrFail();
+        // Find tenant - KONSISTEN dengan method profile()
+        $tenant = Tenant::where('user_id', $user->id)
+            ->latest('id')
+            ->first();
 
-        $uploaded = Cloudinary::upload(
-            $request->file('profile_photo')->getRealPath(),
-            ['folder' => 'profile_photos']
-        );
+        if (!$tenant) {
+            return back()->with('error', 'Data tenant tidak ditemukan.');
+        }
 
-        $tenant->update([
-            'profile_photo' => $uploaded->getSecurePath(),
-        ]);
+        try {
+            // Upload foto baru ke Cloudinary
+            $uploaded = Cloudinary::upload(
+                $request->file('profile_photo')->getRealPath(),
+                [
+                    'folder' => 'profile_photos',
+                ]
+            );
 
-        return back()->with('success', 'Foto profil berhasil diperbarui.');
+            // Simpan URL Cloudinary ke database
+            $tenant->update([
+                'profile_photo' => $uploaded->getSecurePath(),
+            ]);
+
+            return back()->with('success', 'Foto profil berhasil diperbarui.');
+        } catch (\Exception $e) {
+            \Log::error('Profile photo update failed: ' . $e->getMessage());
+            return back()->with('error', 'Gagal memperbarui foto profil.');
+        }
     }
-
 
     /**
      * Dashboard admin.
@@ -152,12 +176,15 @@ class UserController extends Controller
     {
         $u = $request->user();
 
+        // Ambil relasi tenant + room
         $tenant = Tenant::with('room')
             ->where('user_id', $u->id)
             ->latest('id')
             ->first();
 
+        // Get profile photo URL dengan cache busting
         $profilePhoto = asset('teraZ/testi1.png');
+
         if ($tenant && $tenant->profile_photo && str_starts_with($tenant->profile_photo, 'http')) {
             $profilePhoto = $tenant->profile_photo . '?v=' . strtotime($tenant->updated_at);
         }
@@ -171,7 +198,7 @@ class UserController extends Controller
                 'role'     => $u->role,
             ],
             'tenant' => [
-                'id'            => $tenant->id ?? null,
+                'id' => $tenant->id ?? null,
                 'profile_photo' => $profilePhoto,
             ],
             'room' => $tenant && $tenant->room ? [

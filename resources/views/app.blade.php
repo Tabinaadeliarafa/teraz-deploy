@@ -2,7 +2,7 @@
 
 <html>
   <head>
-    <title>Laravel API</title>
+    <title>Arzetta Co-living</title>
   </head>
 </html>
 
