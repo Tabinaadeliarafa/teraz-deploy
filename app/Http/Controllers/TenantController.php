@@ -234,15 +234,14 @@ class TenantController extends Controller
         }
 
         // Simpan foto baru
-        $file = $request->file('profile_photo');
-        $filename = 'tenant_' . $tenant->id . '_' . time() . '.' . $file->extension();
-        $path = $file->storeAs('profile_photos', $filename, 'public');
+        $uploaded = Cloudinary::upload(
+        $request->file('profile_photo')->getRealPath(),
+        ['folder' => 'profile_photos']
+    );
 
-        // Update path foto di database
-        $tenant->update([
-            'profile_photo' => $path,
-            'updated_at' => now(),
-        ]);
+    $tenant->update([
+        'profile_photo' => $uploaded->getSecurePath(),
+    ]);
 
         return back()->with('success', 'Foto profil tenant berhasil diperbarui.');
     }
