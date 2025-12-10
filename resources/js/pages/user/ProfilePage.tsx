@@ -13,7 +13,7 @@ interface User {
 
 interface Tenant {
     id: number;
-    profile_photo_url: string; // Full URL dari backend dengan asset()
+    profile_photo: string; // Full URL dari backend dengan asset()
     updated_at?: string; // Tambahkan untuk cache busting
 }
 
@@ -64,15 +64,13 @@ const Profile: React.FC<Props> = ({ user, tenant, room, unpaidCount }) => {
 
     // FIXED: getProfilePhotoUrl dengan cache busting yang lebih reliable
     const getProfilePhotoUrl = () => {
-    if (tenant.profile_photo_url) {
-        const timestamp = tenant.updated_at
-            ? new Date(tenant.updated_at).getTime()
-            : imageKey;
-        return `${tenant.profile_photo_url}?v=${timestamp}`;
-    }
-    return '/teraZ/testi1.png';
-};
-
+        if (tenant.profile_photo) {
+            // Gunakan updated_at dari server jika tersedia, fallback ke imageKey
+            const timestamp = tenant.updated_at ? new Date(tenant.updated_at).getTime() : imageKey;
+            return `${tenant.profile_photo}?v=${timestamp}`;
+        }
+        return '/teraZ/testi1.png'; // Default fallback
+    };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
