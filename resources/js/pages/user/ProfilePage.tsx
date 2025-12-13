@@ -13,7 +13,7 @@ interface User {
 
 interface Tenant {
     id: number;
-    profile_photo_url: string; // Full URL dari backend dengan asset()
+    profile_photo: string; // Full URL dari backend dengan asset()
     updated_at?: string; // Tambahkan untuk cache busting
 }
 
@@ -37,7 +37,7 @@ const Profile: React.FC<Props> = ({ user, tenant, room, unpaidCount }) => {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string>('');
     const [isUploading, setIsUploading] = useState(false);
-    
+
     // Alert states
     const [showSuccessAlert, setShowSuccessAlert] = useState(false);
     const [showErrorAlert, setShowErrorAlert] = useState(false);
@@ -62,15 +62,10 @@ const Profile: React.FC<Props> = ({ user, tenant, room, unpaidCount }) => {
         });
     };
 
-    // FIXED: getProfilePhotoUrl dengan cache busting yang lebih reliable
     const getProfilePhotoUrl = () => {
-        if (tenant.profile_photo_url) {
-            // Gunakan updated_at dari server jika tersedia, fallback ke imageKey
-            const timestamp = tenant.updated_at ? new Date(tenant.updated_at).getTime() : imageKey;
-            return `${tenant.profile_photo_url}?v=${timestamp}`;
-        }
-        return '/teraZ/testi1.png'; // Default fallback
+        return tenant.profile_photo || '/teraZ/testi1.png';
     };
+
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -126,24 +121,18 @@ const Profile: React.FC<Props> = ({ user, tenant, room, unpaidCount }) => {
                 setSelectedFile(null);
                 setPreviewUrl('');
                 setIsUploading(false);
-                
+
                 // Force refresh gambar dengan update timestamp
                 setImageKey(Date.now());
-                
+
                 // Show success message
                 setAlertMessage('Foto profil berhasil diperbarui!');
                 setShowSuccessAlert(true);
-                
-                // Reload data tenant dari server
-                setTimeout(() => {
-                    router.reload({ 
-                        only: ['tenant'],
-                        onSuccess: () => {
-                            // Update imageKey lagi setelah reload untuk memastikan cache di-refresh
-                            setImageKey(Date.now());
-                        }
-                    });
-                }, 500);
+
+                router.visit('/profile', {
+                    preserveScroll: true,
+                    replace: true,
+                });
             },
             onError: (errors) => {
                 console.error('Upload failed:', errors);
@@ -164,7 +153,7 @@ const Profile: React.FC<Props> = ({ user, tenant, room, unpaidCount }) => {
         <>
             <Head title="Profile" />
 
-            <Layout user={user} currentPath="/profile"unpaidCount={unpaidCount}>
+            <Layout user={user} currentPath="/profile" unpaidCount={unpaidCount}>
                 {/* Page Title */}
                 <h1 className="text-3xl font-semibold text-[#7A2B1E] mt-8 mb-8">Profil Penyewa</h1>
 

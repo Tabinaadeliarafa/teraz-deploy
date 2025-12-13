@@ -8,15 +8,13 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Hash;
+use App\Http\Controllers\RoomController;
 use Illuminate\Support\Facades\Storage;
 use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
-use Illuminate\Support\Facades\Auth;
 
 class TenantController extends Controller
 {
-    /**
-     * Admin – Menampilkan semua penyewa
-     */
+    // Show all tenants page
     public function index()
     {
         $tenants = Tenant::with(['room', 'user'])->get()->map(function ($tenant) {
@@ -27,12 +25,11 @@ class TenantController extends Controller
                 'phone' => $tenant->kontak,
                 'roomNumber' => $tenant->room ? $tenant->room->nomor_kamar : '-',
                 'status' => $this->mapPaymentStatus($tenant),
-
-                // Foto Cloudinary
-                'profile_photo_url' => $tenant->profile_photo_url,
-
-                'start_date' => optional($tenant->tanggal_mulai)->format('Y-m-d'),
-                'end_date'   => optional($tenant->tanggal_selesai)->format('Y-m-d'),
+                'photo' => $tenant->profile_photo
+                    ? asset('storage/' . $tenant->profile_photo)
+                    : asset('teraZ/testi1.png'),
+                'start_date' => $tenant->tanggal_mulai?->format('Y-m-d'),
+                'end_date' => $tenant->tanggal_selesai?->format('Y-m-d'),
                 'tenant_status' => $tenant->status,
             ];
         });
@@ -43,11 +40,19 @@ class TenantController extends Controller
             'tenants' => $tenants,
             'availableRooms' => $rooms,
         ]);
+
+        return Inertia::render('user/Profile', [
+            'user' => $user,
+            'tenant' => [
+                'id' => $tenant->id,
+                'profile_photo' => $tenant->profile_photo_full, // <- PERHATIKAN INI
+                'updated_at' => $tenant->updated_at,
+            ],
+            // room, contract, dst...
+        ]);
     }
 
-    /**
-     * Admin – Tambah penyewa baru
-     */
+    // Create new tenant
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -60,7 +65,7 @@ class TenantController extends Controller
             'catatan' => 'nullable|string',
         ]);
 
-        // Jika email diberikan, buat akun user otomatis
+        // Create user account for tenant if email provided
         $userId = null;
         if (!empty($validated['email'])) {
             $user = User::create([
@@ -68,13 +73,13 @@ class TenantController extends Controller
                 'username' => $validated['nama'],
                 'email' => $validated['email'],
                 'role' => 'tenant',
-                'password' => Hash::make('password123'),
+                'password' => Hash::make('password123'), // Default password
             ]);
             $userId = $user->id;
         }
 
-        // Buat tenant baru
-        Tenant::create([
+        // Create tenant record
+        $tenant = Tenant::create([
             'user_id' => $userId,
             'room_id' => $validated['room_id'],
             'nama' => $validated['nama'],
@@ -85,15 +90,13 @@ class TenantController extends Controller
             'catatan' => $validated['catatan'] ?? null,
         ]);
 
-        // Update status kamar
+        // Update room status to occupied
         Room::where('id', $validated['room_id'])->update(['status' => 'terisi']);
 
         return redirect()->back()->with('success', 'Tenant added successfully.');
     }
 
-    /**
-     * Admin – Show detail penyewa
-     */
+    // Show single tenant
     public function show($id)
     {
         $tenant = Tenant::with(['room', 'user', 'payments'])->findOrFail($id);
@@ -104,9 +107,7 @@ class TenantController extends Controller
         ]);
     }
 
-    /**
-     * Admin – Update data penyewa
-     */
+    // Update tenant
     public function update(Request $request, $id)
     {
         $tenant = Tenant::findOrFail($id);
@@ -115,70 +116,85 @@ class TenantController extends Controller
             'name' => 'required|string|max:255',
             'username' => 'nullable|string|max:255',
             'phone' => 'required|string|max:50',
+            'roomNumber' => 'nullable|string|max:10',
             'status' => 'required|in:Lunas,Terlambat,Menunggu',
         ]);
 
-        // Update tenant
+        // Update tenant info
         $tenant->update([
             'nama' => $validated['name'],
             'kontak' => $validated['phone'],
         ]);
 
-        // Jika dia punya akun user → update juga
+        // Update user email if username provided
         if ($tenant->user) {
             $tenant->user->update([
-                'name' => $validated['name'],
+                'name' => $validated['name'], // Also use unique name!
             ]);
         }
 
         return redirect()->back()->with('success', 'Tenant updated successfully.');
     }
 
-    /**
-     * User – Halaman profil penyewa
-     */
-    public function profile()
+    // Delete tenant
+    public function destroy($id)
     {
-        $user = auth()->user();
-        $tenant = Tenant::where('user_id', $user->id)->firstOrFail();
+        $tenant = Tenant::findOrFail($id);
 
-        return Inertia::render('user/ProfilePage', [
-            'user' => $user,
-            'tenant' => [
-                'id' => $tenant->id,
-                'profile_photo_url' => $tenant->profile_photo_url,
-                'updated_at' => $tenant->updated_at,
-                'room' => $tenant->room,
-            ],
-        ]);
+        // Get room before deleting tenant
+        $roomId = $tenant->room_id;
+
+        // Hapus foto profil jika ada
+        if ($tenant->profile_photo && Storage::disk('public')->exists($tenant->profile_photo)) {
+            Storage::disk('public')->delete($tenant->profile_photo);
+        }
+
+        // Delete tenant
+        $tenant->delete();
+
+        // Update room status back to available if no other active tenants
+        if ($roomId) {
+            $hasActiveTenants = Tenant::where('room_id', $roomId)
+                ->where('status', 'aktif')
+                ->exists();
+
+            if (!$hasActiveTenants) {
+                Room::where('id', $roomId)->update(['status' => 'tersedia']);
+            }
+        }
+
+        return redirect()->back()->with('success', 'Tenant removed successfully.');
     }
 
     /**
-     * User – Update foto profil (Cloudinary)
+     * FIXED: Update foto profil untuk tenant yang sedang login
+     * Route: POST /profile/update-photo
      */
     public function updateProfilePhoto(Request $request)
     {
+
         $request->validate([
             'profile_photo' => 'required|image|mimes:jpeg,png,jpg|max:4096',
         ]);
 
+
         $user = Auth::user();
         $tenant = Tenant::where('user_id', $user->id)->firstOrFail();
 
-        // Hapus foto lama jika Cloudinary URL
-        if ($tenant->profile_photo && str_starts_with($tenant->profile_photo, 'http')) {
+        //HAPUS FOTO LAMA DI CLOUDINARY (kalau ada)
+        if ($tenant->profile_photo) {
             $publicId = pathinfo(parse_url($tenant->profile_photo, PHP_URL_PATH), PATHINFO_FILENAME);
             Cloudinary::destroy("profile_photos/" . $publicId);
         }
 
-        // Upload baru
+        // UPLOAD BARU KE CLOUDINARY
         $uploaded = Cloudinary::upload(
             $request->file('profile_photo')->getRealPath(),
             ['folder' => 'profile_photos']
         );
 
         $tenant->update([
-            'profile_photo' => $uploaded->getSecurePath(),
+            'profile_photo' => $uploaded->getSecurePath(), // URL cloudinary
             'updated_at' => now(),
         ]);
 
@@ -186,7 +202,8 @@ class TenantController extends Controller
     }
 
     /**
-     * Admin – Update foto penyewa tertentu
+     * OPTIONAL: Update foto profil untuk tenant tertentu (untuk admin)
+     * Route: POST /admin/tenants/{id}/update-photo
      */
     public function updatePhotoById(Request $request, $id)
     {
@@ -196,65 +213,43 @@ class TenantController extends Controller
             'profile_photo' => 'required|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
-        // Hapus jika storage lokal (jika masih ada sisa)
-        if (
-            $tenant->profile_photo &&
-            !str_starts_with($tenant->profile_photo, 'http') &&
-            Storage::disk('public')->exists($tenant->profile_photo)
-        ) {
+        // Hapus foto lama jika ada
+        if ($tenant->profile_photo && Storage::disk('public')->exists($tenant->profile_photo)) {
             Storage::disk('public')->delete($tenant->profile_photo);
         }
 
-        // Upload Cloudinary
-        $uploaded = Cloudinary::upload(
-            $request->file('profile_photo_url')->getRealPath(),
-            ['folder' => 'profile_photos_url']
-        );
+        // Simpan foto baru
+        $file = $request->file('profile_photo');
+        $filename = 'tenant_' . $tenant->id . '_' . time() . '.' . $file->extension();
+        $path = $file->storeAs('profile_photos', $filename, 'public');
 
+        // Update path foto di database
         $tenant->update([
-            'profile_photo' => $uploaded->getSecurePath(),
+            'profile_photo' => $path,
             'updated_at' => now(),
         ]);
 
         return back()->with('success', 'Foto profil tenant berhasil diperbarui.');
     }
 
-    /**
-     * Admin – Hapus penyewa
-     */
-    public function destroy($id)
-    {
-        $tenant = Tenant::findOrFail($id);
-
-        $roomId = $tenant->room_id;
-
-        // Hapus foto jika Cloudinary
-        if ($tenant->profile_photo && str_starts_with($tenant->profile_photo, 'http')) {
-            $publicId = pathinfo(parse_url($tenant->profile_photo, PHP_URL_PATH), PATHINFO_FILENAME);
-            Cloudinary::destroy("profile_photos/" . $publicId);
-        }
-
-        $tenant->delete();
-
-        // Cek apakah kamar bisa dikembalikan ke "tersedia"
-        $stillActive = Tenant::where('room_id', $roomId)->where('status', 'aktif')->exists();
-        if (!$stillActive) {
-            Room::where('id', $roomId)->update(['status' => 'tersedia']);
-        }
-
-        return redirect()->back()->with('success', 'Tenant removed successfully.');
-    }
-
-    /**
-     * Payment status logic
-     */
+    // Helper function to map payment status
     private function mapPaymentStatus($tenant)
     {
-        if ($tenant->payments()->where('status', 'overdue')->exists()) {
+        // Check if tenant has any overdue payments
+        $overduePayment = $tenant->payments()
+            ->where('status', 'overdue')
+            ->exists();
+
+        if ($overduePayment) {
             return 'Terlambat';
         }
 
-        if ($tenant->payments()->where('status', 'pending')->exists()) {
+        // Check if tenant has pending payments
+        $pendingPayment = $tenant->payments()
+            ->where('status', 'pending')
+            ->exists();
+
+        if ($pendingPayment) {
             return 'Menunggu';
         }
 

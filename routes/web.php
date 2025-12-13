@@ -14,7 +14,7 @@ use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\PengeluaranController;
 use Inertia\Inertia;
 
-Route::get('/', fn () => Inertia::render('LandingPage'))->name('landing');
+Route::get('/', fn() => Inertia::render('LandingPage'))->name('landing');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'show'])->name('login');
@@ -27,7 +27,8 @@ Route::post('/logout', [LoginController::class, 'logout'])
 
 Route::get('/storage/{path}', function ($path) {
     $fullPath = storage_path('app/public/' . $path);
-    if (!file_exists($fullPath)) abort(404);
+    if (!file_exists($fullPath))
+        abort(404);
     return response()->file($fullPath, [
         'Cache-Control' => 'no-cache, no-store, must-revalidate',
         'Pragma' => 'no-cache',
@@ -48,6 +49,9 @@ Route::middleware(['auth', 'role:tenant'])->group(function () {
 
     Route::get('/pembayaran', [PaymentController::class, 'index'])->name('tenant.pembayaran');
     Route::post('/pembayaran/confirm', [PaymentController::class, 'confirm'])->name('tenant.pembayaran.confirm');
+
+
+    Route::post('/api/new/payments', [\App\Http\Controllers\Api\PaymentController::class, 'store']);
 });
 
 

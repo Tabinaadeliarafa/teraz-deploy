@@ -8,16 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('payments', function (Blueprint $table) {
-            $table->id();
-
-            // Relasi ke users
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-
-            // Nominal pembayaran
-            $table->decimal('amount', 15, 2);
-
-            // Tanggal jatuh tempo
+        Schema::table('payments', function (Blueprint $table) {
+          
             $table->date('due_date');
 
             // pending = belum bayar, paid = sudah bayar

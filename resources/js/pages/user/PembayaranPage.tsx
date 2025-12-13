@@ -61,7 +61,7 @@ const PembayaranPage: React.FC<PembayaranPageProps> = ({ user, payments, stats }
   // Filter & Sort states
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [sortOrder, setSortOrder] = useState<string>('desc');
-  
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState(0);
   const itemsPerPage = 5;
@@ -231,16 +231,17 @@ const PembayaranPage: React.FC<PembayaranPageProps> = ({ user, payments, stats }
       setShowErrorAlert(true);
       return;
     }
-
     const formData = new FormData();
-    formData.append('room_id', String(selectedPayment.id));
-    formData.append('amount', String(selectedPayment.amount));
-    formData.append('method', paymentMethod);
 
-    if (notes) formData.append('note', notes);
-    if (referenceFile) formData.append('proof', referenceFile);
+    formData.append('payment_id', String(selectedPayment.id));
 
-    router.post('/api/payments', formData, {
+    formData.append('payment_method', paymentMethod);
+
+    if (notes) formData.append('notes', notes);
+
+    if (referenceFile) formData.append('reference', referenceFile);
+
+    router.post('/pembayaran/confirm', formData, {
       forceFormData: true,
       onSuccess: () => {
         setShowPaymentModal(false);
@@ -256,12 +257,13 @@ const PembayaranPage: React.FC<PembayaranPageProps> = ({ user, payments, stats }
         router.reload({ only: ['payments', 'stats'] });
       },
       onError: (errors) => {
-        console.error('Upload gagal:', errors);
+        console.error(errors);
         setAlertMessage('Gagal mengirim bukti pembayaran.');
         setShowErrorAlert(true);
       },
     });
   };
+
 
   return (
     <>
@@ -298,7 +300,7 @@ const PembayaranPage: React.FC<PembayaranPageProps> = ({ user, payments, stats }
             <h2 className="text-2xl font-semibold text-[#412E27]">
               Riwayat Pembayaran
             </h2>
-            
+
             {/* Filter & Sort Controls */}
             <div className="flex gap-3">
               {/* Sort Button */}
@@ -338,7 +340,7 @@ const PembayaranPage: React.FC<PembayaranPageProps> = ({ user, payments, stats }
             {filteredPayments.length === 0 ? (
               <div className="bg-white rounded-lg p-8 text-center">
                 <p className="text-gray-500">
-                  {filterStatus === 'all' 
+                  {filterStatus === 'all'
                     ? 'Belum ada tagihan pembayaran'
                     : 'Tidak ada pembayaran yang sesuai dengan filter'
                   }
@@ -437,11 +439,10 @@ const PembayaranPage: React.FC<PembayaranPageProps> = ({ user, payments, stats }
               <button
                 onClick={handlePrevPage}
                 disabled={currentPage === 0}
-                className={`p-2 rounded-full transition-colors ${
-                  currentPage === 0
-                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    : 'bg-[#7A2B1E] text-white hover:bg-[#5C1F14]'
-                }`}
+                className={`p-2 rounded-full transition-colors ${currentPage === 0
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-[#7A2B1E] text-white hover:bg-[#5C1F14]'
+                  }`}
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
@@ -451,11 +452,10 @@ const PembayaranPage: React.FC<PembayaranPageProps> = ({ user, payments, stats }
                   <button
                     key={index}
                     onClick={() => handlePageClick(index)}
-                    className={`w-3 h-3 rounded-full transition-all ${
-                      currentPage === index
-                        ? 'bg-[#7A2B1E] w-8'
-                        : 'bg-gray-300 hover:bg-gray-400'
-                    }`}
+                    className={`w-3 h-3 rounded-full transition-all ${currentPage === index
+                      ? 'bg-[#7A2B1E] w-8'
+                      : 'bg-gray-300 hover:bg-gray-400'
+                      }`}
                     aria-label={`Go to page ${index + 1}`}
                   />
                 ))}
@@ -464,11 +464,10 @@ const PembayaranPage: React.FC<PembayaranPageProps> = ({ user, payments, stats }
               <button
                 onClick={handleNextPage}
                 disabled={currentPage === totalPages - 1}
-                className={`p-2 rounded-full transition-colors ${
-                  currentPage === totalPages - 1
-                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    : 'bg-[#7A2B1E] text-white hover:bg-[#5C1F14]'
-                }`}
+                className={`p-2 rounded-full transition-colors ${currentPage === totalPages - 1
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-[#7A2B1E] text-white hover:bg-[#5C1F14]'
+                  }`}
               >
                 <ChevronRight className="w-5 h-5" />
               </button>

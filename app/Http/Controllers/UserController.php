@@ -29,79 +29,79 @@ class UserController extends Controller
         }
 
         $unpaidCount = $tenant->payments()
-        ->where('status', 'pending')   // sesuaikan kalau status di DB-mu beda, misal 'unpaid'
-        ->count();
+            ->where('status', 'pending')   // sesuaikan kalau status di DB-mu beda, misal 'unpaid'
+            ->count();
 
 
         $unpaidMonths = $tenant->payments()
-        ->where('status', 'pending')
-        ->get()
-        ->groupBy(function ($p) {
-            // bikin string "2025-08"
-            return sprintf('%04d-%02d', $p->period_year, $p->period_month);
-        })
-        ->map(function ($items, $month) {
-            return [
-                'month'     => $month, // contoh: "2025-08"
-                'monthName' => Carbon::parse($month . '-01')->translatedFormat('F Y'),
-                'total'     => $items->sum('amount'),
-            ];
-        })
-        ->values();
+            ->where('status', 'pending')
+            ->get()
+            ->groupBy(function ($p) {
+                // bikin string "2025-08"
+                return sprintf('%04d-%02d', $p->period_year, $p->period_month);
+            })
+            ->map(function ($items, $month) {
+                return [
+                    'month' => $month, // contoh: "2025-08"
+                    'monthName' => Carbon::parse($month . '-01')->translatedFormat('F Y'),
+                    'total' => $items->sum('amount'),
+                ];
+            })
+            ->values();
 
         $rejectedPayments = $tenant->payments()
-        ->where('status', 'rejected')
-        ->orderBy('period_year')
-        ->orderBy('period_month')
-        ->get()
-        ->map(function ($p) {
-            return [
-                'month'     => sprintf('%04d-%02d', $p->period_year, $p->period_month),
-                'monthName' => Carbon::create($p->period_year, $p->period_month, 1)->translatedFormat('F Y'),
-                'reason'    => $p->notes ?? 'Tidak ada alasan',
-            ];
-        });
+            ->where('status', 'rejected')
+            ->orderBy('period_year')
+            ->orderBy('period_month')
+            ->get()
+            ->map(function ($p) {
+                return [
+                    'month' => sprintf('%04d-%02d', $p->period_year, $p->period_month),
+                    'monthName' => Carbon::create($p->period_year, $p->period_month, 1)->translatedFormat('F Y'),
+                    'reason' => $p->notes ?? 'Tidak ada alasan',
+                ];
+            });
 
 
         // Map data room
         $room = $tenant->room ? [
-            'number'        => $tenant->room->nomor_kamar,
-            'type'          => $tenant->room->tipe,
-            'monthly_rent'  => $tenant->room->harga,
-            'status'        => $tenant->room->status,
+            'number' => $tenant->room->nomor_kamar,
+            'type' => $tenant->room->tipe,
+            'monthly_rent' => $tenant->room->harga,
+            'status' => $tenant->room->status,
         ] : null;
 
         // Map data kontrak
         $contract = [
-            'start_date'      => optional($tenant->tanggal_mulai)->format('Y-m-d'),
-            'end_date'        => optional($tenant->tanggal_selesai)->format('Y-m-d'),
+            'start_date' => optional($tenant->tanggal_mulai)->format('Y-m-d'),
+            'end_date' => optional($tenant->tanggal_selesai)->format('Y-m-d'),
             'duration_months' => ($tenant->tanggal_mulai && $tenant->tanggal_selesai)
                 ? \Illuminate\Support\Carbon::parse($tenant->tanggal_mulai)
                     ->diffInMonths(\Illuminate\Support\Carbon::parse($tenant->tanggal_selesai))
                 : null,
-            'status'          => $tenant->status,
-            'note'            => $tenant->catatan,
+            'status' => $tenant->status,
+            'note' => $tenant->catatan,
         ];
 
-        // Foto profil dengan cache busting
         $profilePhoto = $tenant->profile_photo
-            ? asset('storage/' . $tenant->profile_photo) . '?v=' . strtotime($tenant->updated_at)
+            ? asset('storage/' . $tenant->profile_photo)
             : asset('teraZ/testi1.png');
+
 
         return Inertia::render('user/ProfilePage', [
             'user' => [
-                'id'       => $u->id,
-                'name'     => $tenant->nama ?? $u->name, 
+                'id' => $u->id,
+                'name' => $tenant->nama ?? $u->name,
                 'username' => $tenant->user?->email ?? $u->username,
-                'phone'    => $tenant->kontak,
-                'role'     => $u->role,
-                'room'     => $tenant->room->nomor_kamar ?? null, 
+                'phone' => $tenant->kontak,
+                'role' => $u->role,
+                'room' => $tenant->room->nomor_kamar ?? null,
             ],
             'tenant' => [
-                'id'            => $tenant->id,
-                'profile_photo' => $tenant->profile_photo_url,
+                'id' => $tenant->id,
+                'profile_photo' => $profilePhoto,
             ],
-            'room'     => $room,
+            'room' => $room,
             'contract' => $contract,
 
             'unpaidCount' => $unpaidCount,
@@ -147,7 +147,8 @@ class UserController extends Controller
                 'profile_photo' => $path,
             ]);
 
-            return back()->with('success', 'Foto profil berhasil diperbarui.');
+            return redirect()->route('profile');
+
         } catch (\Exception $e) {
             \Log::error('Profile photo update failed: ' . $e->getMessage());
             return back()->with('error', 'Gagal memperbarui foto profil.');
@@ -163,7 +164,7 @@ class UserController extends Controller
 
         return Inertia::render('admin/DashboardAdminPage', [
             'user' => [
-                'id'   => $u->id,
+                'id' => $u->id,
                 'name' => $u->name,
             ],
         ]);
@@ -190,31 +191,31 @@ class UserController extends Controller
 
         return response()->json([
             'user' => [
-                'id'       => $u->id,
-                'name'     => $u->name,
+                'id' => $u->id,
+                'name' => $u->name,
                 'username' => $u->username,
-                'phone'    => $u->phone,
-                'role'     => $u->role,
+                'phone' => $u->phone,
+                'role' => $u->role,
             ],
             'tenant' => [
                 'id' => $tenant->id ?? null,
-                'profile_photo' => $tenant->profile_photo_url,
+                'profile_photo' => $profilePhoto,
             ],
             'room' => $tenant && $tenant->room ? [
-                'number'        => $tenant->room->nomor_kamar,
-                'type'          => $tenant->room->tipe,
-                'monthly_rent'  => $tenant->room->harga,
-                'status'        => $tenant->room->status,
+                'number' => $tenant->room->nomor_kamar,
+                'type' => $tenant->room->tipe,
+                'monthly_rent' => $tenant->room->harga,
+                'status' => $tenant->room->status,
             ] : null,
             'contract' => $tenant ? [
-                'start_date'      => optional($tenant->tanggal_mulai)->format('Y-m-d'),
-                'end_date'        => optional($tenant->tanggal_selesai)->format('Y-m-d'),
+                'start_date' => optional($tenant->tanggal_mulai)->format('Y-m-d'),
+                'end_date' => optional($tenant->tanggal_selesai)->format('Y-m-d'),
                 'duration_months' => ($tenant->tanggal_mulai && $tenant->tanggal_selesai)
                     ? \Illuminate\Support\Carbon::parse($tenant->tanggal_mulai)
                         ->diffInMonths(\Illuminate\Support\Carbon::parse($tenant->tanggal_selesai))
                     : null,
-                'status'          => $tenant->status,
-                'note'            => $tenant->catatan,
+                'status' => $tenant->status,
+                'note' => $tenant->catatan,
             ] : null,
         ]);
     }

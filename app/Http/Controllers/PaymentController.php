@@ -17,7 +17,7 @@ class PaymentController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        
+
         $tenant = Tenant::where('user_id', $user->id)
             ->orWhere('nama', $user->name)
             ->orWhere('kontak', $user->phone)
@@ -73,15 +73,15 @@ class PaymentController extends Controller
 
         return Inertia::render('user/PembayaranPage', [
             'user' => [
-                'id'       => $user->id,
-                'name'     => $tenant->nama ?? $user->name,   
+                'id' => $user->id,
+                'name' => $tenant->nama ?? $user->name,
                 'username' => $user->username,
-                'phone'    => $user->phone,
-                'role'     => $user->role,
-                'room'     => $tenant->room->nomor_kamar ?? null,
+                'phone' => $user->phone,
+                'role' => $user->role,
+                'room' => $tenant->room->nomor_kamar ?? null,
             ],
             'payments' => $payments,
-            'stats'    => $stats,
+            'stats' => $stats,
         ]);
     }
 
@@ -93,7 +93,7 @@ class PaymentController extends Controller
     public function confirm(Request $request)
     {
         $user = $request->user();
-        
+
         $tenant = Tenant::where('user_id', $user->id)
             ->orWhere('nama', $user->name)
             ->orWhere('kontak', $user->phone)
@@ -120,34 +120,30 @@ class PaymentController extends Controller
             return back()->with('error', 'Pembayaran ini sudah dikonfirmasi atau sedang diproses.');
         }
 
-        // Handle file upload
-        $referenceUrl = null;
 
+        
         if ($request->hasFile('reference')) {
+            $file = $request->file('reference');
+            $filename = 'payment_' . $payment->id . '_' . time() . '.' . $file->extension();
 
-            // Upload langsung ke Cloudinary
-            $uploaded = Cloudinary::upload(
-                $request->file('reference')->getRealPath(),
-                [
-                    'folder' => 'payment_proofs'
-                ]
+            $referencePath = $file->storeAs(
+                'payment_proofs',
+                $filename,
+                'public'
             );
-
-            $referenceUrl = $uploaded->getSecurePath(); // ✅ URL CLOUDINARY
         }
 
-
-        // Update payment - save ONLY the path, not the full URL
-       $payment->update([
-        'status' => 'paid',
-        'payment_method' => $validated['payment_method'],
-        'reference' => $referenceUrl, // SIMPAN URL CLOUDINARY
-        'notes' => $validated['notes'] ?? null,
-        'payment_date' => now(),
-        'paid_at' => now(),
-    ]);
+        $payment->update([
+            'status' => 'paid',
+            'payment_method' => $validated['payment_method'],
+            'reference' => $referencePath,
+            'notes' => $validated['notes'] ?? null,
+            'payment_date' => now(),
+            'paid_at' => now(),
+        ]);
 
         return back()->with('success', 'Pembayaran berhasil dikonfirmasi. Menunggu verifikasi admin.');
+
     }
 
 
@@ -158,7 +154,7 @@ class PaymentController extends Controller
      */
     private function mapPaymentType($type): string
     {
-        return match($type) {
+        return match ($type) {
             'rent' => 'Sewa Bulanan',
             'deposit' => 'Deposit',
             'utilities' => 'Utilitas',

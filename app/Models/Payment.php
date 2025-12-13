@@ -88,18 +88,6 @@ class Payment extends Model
         };
     }
 
-    public function getProofUrlAttribute()
-    {
-        if (!$this->proof_path) return null;
-
-        // Kalau sudah Cloudinary URL
-        if (str_starts_with($this->proof_path, 'http')) {
-            return $this->proof_path;
-        }
-
-        return asset('storage/' . $this->proof_path);
-    }
-
     /**
      * Status color
      */

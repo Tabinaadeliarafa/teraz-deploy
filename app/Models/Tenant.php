@@ -14,41 +14,32 @@ class Tenant extends Model
         'room_id',
         'nama',
         'kontak',
-        'profile_photo',
+        'profile_photo', // Add this
         'tanggal_mulai',
         'tanggal_selesai',
         'status',
         'catatan',
+        'profile_photo',
     ];
 
     protected $casts = [
-        'tanggal_mulai'   => 'date',
+        'tanggal_mulai' => 'date',
         'tanggal_selesai' => 'date',
     ];
 
-    // frontend akan menerima AUTO field ini
-    protected $appends = ['profile_photo_url'];
+    protected $appends = ['profile_photo_full'];
 
-    /**
-     * Akses URL foto profil
-     */
-    public function getProfilePhotoUrlAttribute()
+    public function getProfilePhotoFullAttribute()
     {
-        // Jika tidak punya foto → kirim null, nanti frontend handle fallback
-        if (!$this->profile_photo) {
-            return null;
+        if ($this->profile_photo && Storage::disk('public')->exists($this->profile_photo)) {
+            // URL publik: http://APP_URL/storage/profile_photos/abc123.jpg
+            return asset('storage/' . $this->profile_photo);
         }
 
-        // Jika sudah berupa URL Cloudinary → return langsung
-        if (str_starts_with($this->profile_photo, 'http')) {
-            return $this->profile_photo;
-        }
-
-        // fallback storage lokal (tidak akan dipakai di Railway)
-        return asset('storage/' . $this->profile_photo);
+        // fallback kalau belum ada foto
+        return asset('teraZ/default-user.png'); // atau path default kamu
     }
 
-    // Relations
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -67,5 +58,14 @@ class Tenant extends Model
     public function maintenanceRequests()
     {
         return $this->hasMany(MaintenanceRequest::class);
+    }
+
+    // Get profile photo URL
+    public function getProfilePhotoUrlAttribute()
+    {
+        if ($this->profile_photo) {
+            return asset('storage/' . $this->profile_photo);
+        }
+        return asset('teraZ/testi1.png'); // Default image
     }
 }

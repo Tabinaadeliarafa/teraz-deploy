@@ -15,13 +15,14 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot()
     {
+
         if ($this->app->runningInConsole()) {
             return; // ✅ PENTING: cegah DB query saat config:cache
         }
 
-        if (config('app.env') === 'production') {
-            URL::forceScheme('https');
-        }
+        // if (config('app.env') === 'production') {
+        //     URL::forceScheme('https');
+        // }
         
 
         Inertia::share('unpaidCount', function () {
