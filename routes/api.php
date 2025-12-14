@@ -37,7 +37,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Profil (JSON) & logout
     // Route::get('/profile', [UserController::class, 'profile']);
-    Route::post('/logout', [AuthController::class, 'logout']);
+   // sementara Route::post('/logout', [AuthController::class, 'logout']);
 
     // ---------- Tenant (role: tenant)
     Route::middleware('anyrole:tenant')->group(function () {
