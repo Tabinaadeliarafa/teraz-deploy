@@ -41,24 +41,15 @@ class AuthController extends Controller
         ], 200);
     }
 
-    // POST /api/logout
-    public function logout(Request $request)
-    {
-        // 🔐 Hapus token Sanctum (jika ada)
-        if ($request->user() && $request->user()->currentAccessToken()) {
+       // ✅ POST /api/logout
+        public function logout(Request $request)
+        {
+            // hapus token yang sedang dipakai
             $request->user()->currentAccessToken()->delete();
+            
+            return response()->json([
+                'message' => 'Logout berhasil'
+            ], 200);
         }
-
-        // 🔐 Logout session Laravel
-        Auth::logout();
-
-        // 🔐 Matikan session sepenuhnya
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        return response()->json([
-            'message' => 'Logout berhasil'
-        ], 200);
-    }
 
 }
