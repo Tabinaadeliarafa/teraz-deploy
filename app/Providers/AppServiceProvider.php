@@ -24,6 +24,9 @@ class AppServiceProvider extends ServiceProvider
         //     URL::forceScheme('https');
         // }
         
+        if (app()->environment('production')) {
+            URL::forceScheme('https');
+        }
 
         Inertia::share('unpaidCount', function () {
             if (!auth()->check()) return 0;
