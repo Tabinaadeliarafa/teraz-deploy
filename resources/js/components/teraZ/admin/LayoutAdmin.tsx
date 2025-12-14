@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { router, Link } from '@inertiajs/react';
 import { Menu } from 'lucide-react';
+import axios from 'axios';
 
 interface LayoutAdminProps {
     user: {
@@ -20,12 +21,12 @@ const LayoutAdmin: React.FC<LayoutAdminProps> = ({
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const handleLogout = () => {
-    router.post('/logout', {}, {
-        onSuccess: () => {
-            router.visit('/'); // ✅ langsung ke LandingPage TANPA reload
-        },
-    });
+        axios.post('/api/logout').then(() => {
+            localStorage.clear();
+            router.visit('/');
+        });
 };
+
 
     const toggleSidebar = () => {
         setIsSidebarOpen(!isSidebarOpen);

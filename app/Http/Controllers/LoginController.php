@@ -62,6 +62,7 @@ class LoginController extends Controller
         return redirect($next);
     }
 
+    /*
     public function logout(Request $request)
     {
         Auth::logout();
@@ -71,6 +72,7 @@ class LoginController extends Controller
         
         return redirect('/');
     }
+    */
     
     public function username()
     {
