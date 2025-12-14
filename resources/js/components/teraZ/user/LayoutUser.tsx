@@ -1,7 +1,6 @@
 import React, { useState, useRef } from "react";
 import { Link, router, usePage } from "@inertiajs/react";
 import { Menu, Bell } from "lucide-react";
-import axios from 'axios';
 
 interface UnpaidMonth {
   month: string;
@@ -76,9 +75,10 @@ const LayoutUser: React.FC<LayoutUserProps> = ({
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
 
   const handleLogout = () => {
-    axios.post('/api/logout').then(() => {
-        localStorage.clear();
-        router.visit('/');
+    router.post('/logout', {}, {
+        onSuccess: () => {
+            router.visit('/'); // ✅ langsung ke LandingPage TANPA reload
+        },
     });
 };
 
