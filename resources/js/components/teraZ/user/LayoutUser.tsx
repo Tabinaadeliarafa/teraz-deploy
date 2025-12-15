@@ -145,7 +145,7 @@ const LayoutUser: React.FC<LayoutUserProps> = ({
 
             <button
               onClick={handleLogout}
-              className="px-6 py-2.5 border-3 border-[#CCB89D] rounded-md hover:bg-[#CCB89D]"
+              className="px-6 py-2.5 border-3 border-[#CCB89D] rounded-md hover:bg-[#CCB89D] transition-colors text-[#343434] text-base whitespace-nowrap"
             >
               Logout
             </button>
